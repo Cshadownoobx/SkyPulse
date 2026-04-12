@@ -384,6 +384,39 @@
         <button onclick="localStorage.removeItem('skypulse_pro'); location.reload();" style="background: #ef4444; color: white; border: none; padding: 0.4rem 1rem; border-radius: 6px; font-size: 0.7rem; font-weight: bold; cursor: pointer;">🔒 Re-Lock PRO</button>
       </div>
 
+      <div id="active-modules" style="margin-top: 2rem; display: flex; flex-direction: column; gap: 1rem;">
+        <div class="section-title">Active Modules (Live)</div>
+        <div id="module-weather_overlay" class="module-card">
+          <div class="module-title">Weather Insights</div>
+          <div class="module-content">Real-time turbulence, precipitation, and wind-shear overlays.</div>
+        </div>
+        <div id="module-flight_history" class="module-card">
+          <div class="module-title">Playback Engine</div>
+          <div class="module-content">Access 30-day historical flight paths and telemetry records.</div>
+        </div>
+        <div id="module-airline_comparison" class="module-card">
+          <div class="module-title">Fleet Efficiency</div>
+          <div class="module-content">Compare on-time performance and fuel metrics across carriers.</div>
+        </div>
+        <div id="module-price_tracker" class="module-card">
+          <div class="module-title">Fare Guardian</div>
+          <div class="module-content">AI-powered price tracking and fare drop notification system.</div>
+        </div>
+        <!-- NEW FLAGS -->
+        <div id="module-flight_status_alerts" class="module-card">
+          <div class="module-title">Status Alerts</div>
+          <div class="module-content">Push notifications for delays, gate changes, and live arrivals.</div>
+        </div>
+        <div id="module-airport_info_panel" class="module-card">
+          <div class="module-title">Airport Intelligence</div>
+          <div class="module-content">Terminal maps, lounge occupancy, and security wait times.</div>
+        </div>
+        <div id="module-co2_emissions" class="module-card">
+          <div class="module-title">Carbon Tracker</div>
+          <div class="module-content">Estimated CO₂ footprint based on airframe and distance.</div>
+        </div>
+      </div>
+
       <button onclick="logout()" style="background: transparent; color: var(--danger); border: 1px solid rgba(239,68,68,0.3); padding: 0.8rem; border-radius: 12px; font-size: 0.85rem; font-weight: 800; cursor: pointer; margin-top: 1.5rem; width: 100%; transition: 0.2s;" onmouseover="this.style.background='rgba(239,68,68,0.1)'" onmouseout="this.style.background='transparent'">🚪 Secure Logout</button>
 
     </div>
@@ -1058,10 +1091,14 @@
     function changeMapSource() { document.getElementById('map-frame').src = document.getElementById('mapSource').value; }
 
     const FLAGS = [
-      { id: "weather_overlay", enabled: true, rolloutPercentage: 60, environments: ["prod", "staging", "dev"] },
-      { id: "flight_history", enabled: true, rolloutPercentage: 40, environments: ["prod", "staging", "dev"] },
-      { id: "airline_comparison", enabled: true, rolloutPercentage: 15, environments: ["prod", "staging", "dev"] },
-      { id: "price_tracker", enabled: true, rolloutPercentage: 100, environments: ["prod"] }
+      { id: "live_flight_map", enabled: true, rolloutPercentage: 100, environments: ["prod", "staging", "dev"] },
+      { id: "flight_status_alerts", enabled: true, rolloutPercentage: 100, environments: ["prod", "staging", "dev"] },
+      { id: "airport_info_panel", enabled: true, rolloutPercentage: 100, environments: ["prod", "staging", "dev"] },
+      { id: "flight_history", enabled: true, rolloutPercentage: 40, environments: ["staging", "dev"] },
+      { id: "weather_overlay", enabled: true, rolloutPercentage: 60, environments: ["staging", "dev"] },
+      { id: "airline_comparison", enabled: false, rolloutPercentage: 0, environments: ["dev"] },
+      { id: "price_tracker", enabled: false, rolloutPercentage: 0, environments: ["dev"] },
+      { id: "co2_emissions", enabled: false, rolloutPercentage: 0, environments: ["dev"] }
     ];
 
     class FeatureFlagManager {
@@ -1089,7 +1126,7 @@
 
     function evaluateFlags() {
       const userId = document.getElementById('userId').value;
-      ["weather_overlay", "flight_history", "airline_comparison", "price_tracker"].forEach(modId => {
+      FLAGS.map(f => f.id).forEach(modId => {
         const el = document.getElementById(`module-${modId}`);
         if(el) el.classList.toggle('active', flags.isEnabled(modId, userId));
       });

@@ -191,7 +191,7 @@ class FeatureFlagManager:
         """
         key = f"{user_id}:{flag_id}".encode()
         digest = hashlib.md5(key).hexdigest()
-        return int(digest[:8], 16) % 100
+        return int(digest[0:8], 16) % 100
 
     @staticmethod
     def _random_bucket() -> int:
