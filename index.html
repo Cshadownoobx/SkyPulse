@@ -78,7 +78,7 @@
     
     <div id="auth-card" style="position: relative; background: rgba(30, 41, 59, 0.7); border: 1px solid rgba(255,255,255,0.1); border-radius: 24px; padding: 3rem; width: 420px; text-align: center; box-shadow: 0 25px 50px rgba(0,0,0,0.5); animation: fadeIn 0.8s ease;">
       <div style="font-size: 3rem; margin-bottom: 0.5rem; filter: drop-shadow(0 0 15px rgba(59,130,246,0.6));">✈️</div>
-      <h2 style="color: white; font-size: 1.8rem; font-weight: 900; margin-bottom: 0.5rem; letter-spacing: -0.5px;">Sign in to <span style="background: linear-gradient(to right, #60a5fa, #a78bfa); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">SkyPulse</span></h2>
+      <h2 style="color: white; font-size: 1.8rem; font-weight: 900; margin-bottom: 0.5rem; letter-spacing: -0.5px;">Sign in to <span style="background: linear-gradient(to right, #60a5fa, #a78bfa); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;">SkyPulse</span></h2>
       <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 2rem;">Enterprise Aviation Intelligence</p>
 
       <!-- OAuth Buttons -->
@@ -119,7 +119,7 @@
     
     <div style="text-align: center; margin-bottom: 4rem; animation: fadeIn 0.8s ease;">
       <div style="font-size: 5rem; filter: drop-shadow(0 0 25px rgba(59,130,246,0.6)); margin-bottom: 1rem;">✈️</div>
-      <h1 style="color: white; font-weight: 900; font-size: 3rem; letter-spacing: -1px; margin: 0 0 0.5rem 0;">Welcome to <span style="background: linear-gradient(to right, #60a5fa, #a78bfa); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">SkyPulse</span></h1>
+      <h1 style="color: white; font-weight: 900; font-size: 3rem; letter-spacing: -1px; margin: 0 0 0.5rem 0;">Welcome to <span style="background: linear-gradient(to right, #60a5fa, #a78bfa); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;">SkyPulse</span></h1>
       <p style="color: var(--text-muted); font-size: 1.1rem; max-width: 500px; line-height: 1.5;">The ultimate enterprise aviation dashboard. Select a module to initialize your session.</p>
     </div>
 
@@ -166,7 +166,7 @@
     <!-- Zayd Aviation PRO Subscription Banner -->
     <div style="background: linear-gradient(135deg, rgba(59,130,246,0.15) 0%, rgba(139,92,246,0.15) 100%); border: 1px solid rgba(139,92,246,0.4); border-radius: 12px; padding: 1rem; margin-bottom: 1.5rem; display: flex; align-items: center; justify-content: space-between; cursor: pointer; transition: transform 0.2s; box-shadow: 0 4px 15px rgba(0,0,0,0.3);" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'" onclick="document.getElementById('pro-modal').style.display='flex'">
       <div>
-        <div style="font-size: 0.9rem; font-weight: 800; color: white;">SkyPulse <span style="background: linear-gradient(to right, #60a5fa, #a78bfa); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">PRO</span></div>
+        <div style="font-size: 0.9rem; font-weight: 800; color: white;">SkyPulse <span style="background: linear-gradient(to right, #60a5fa, #a78bfa); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;">PRO</span></div>
         <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 0.2rem;">Unlock Global Features</div>
       </div>
       <div style="background: white; color: #0f172a; padding: 0.3rem 0.6rem; border-radius: 20px; font-size: 0.7rem; font-weight: bold;">£1.99/mo</div>
@@ -692,13 +692,7 @@
         setTimeout(() => {
           statusText.innerText = 'Platform Access Granted!';
           localStorage.setItem('skypulse_user_session', 'active');
-          
-          // Execute beautiful cross-fade into main platform
-          const portal = document.getElementById('auth-portal');
-          portal.style.opacity = '0';
-          setTimeout(() => {
-            portal.style.display = 'none';
-          }, 600);
+          window.location.href = 'dashboard.html';
         }, 1200);
       }, 1500);
     }
