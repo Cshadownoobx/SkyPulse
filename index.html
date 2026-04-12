@@ -1,0 +1,1100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SkyPulse - UK Departures & Deals</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --glass-bg: rgba(15, 23, 42, 0.85);
+      --glass-border: rgba(255, 255, 255, 0.15);
+      --primary: #3b82f6;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #10b981;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+      --panel-width: 420px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background-color: var(--bg); color: var(--text); overflow: hidden; height: 100vh; width: 100vw; display: flex; }
+    #map-frame { flex: 1; height: 100vh; border: none; z-index: 0; }
+    .sidebar { width: var(--panel-width); height: 100vh; background: var(--glass-bg); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border-right: 1px solid var(--glass-border); padding: 1.5rem; display: flex; flex-direction: column; box-shadow: 4px 0 24px rgba(0, 0, 0, 0.6); z-index: 10; }
+    .brand { display: flex; align-items: center; gap: 0.75rem; padding-bottom: 1rem; }
+    .brand-icon { width: 32px; height: 32px; background: var(--primary); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; }
+    .brand-text { font-size: 1.25rem; font-weight: 700; letter-spacing: -0.025em; }
+    .tabs { display: flex; background: rgba(0,0,0,0.4); border-radius: 8px; padding: 0.25rem; margin-bottom: 1.5rem; }
+    .tab-btn { flex: 1; padding: 0.5rem; background: transparent; border: none; color: var(--text-muted); border-radius: 6px; font-weight: 600; font-size: 0.85rem; cursor: pointer; transition: all 0.2s; }
+    .tab-btn.active { background: rgba(255,255,255,0.1); color: var(--text); box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+    .tab-content { display: none; flex: 1; overflow-y: auto; flex-direction: column; gap: 1.5rem; }
+    .tab-content.active { display: flex; }
+    .tab-content::-webkit-scrollbar { width: 4px; }
+    .tab-content::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 4px; }
+    .section-title { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); font-weight: 600; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem; }
+    
+    .deal-card { background: linear-gradient(145deg, rgba(239, 68, 68, 0.15) 0%, rgba(255, 255, 255, 0.02) 100%); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 12px; padding: 1rem; position: relative; overflow: hidden; margin-bottom: 1rem; }
+    .flight-card { background: rgba(255, 255, 255, 0.03); border: 1px solid var(--glass-border); border-radius: 12px; padding: 1rem; margin-bottom: 1rem; transition: transform 0.2s; }
+    .flight-card:hover { transform: translateY(-2px); border-color: rgba(255,255,255,0.3); }
+    .route { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem; }
+    .airport { font-size: 1.25rem; font-weight: 800; letter-spacing: -0.05em; }
+    .airport small { display: block; font-size: 0.65rem; color: var(--text-muted); font-weight: 500; letter-spacing: 0; }
+    .plane-icon { color: var(--primary); font-size: 1.2rem; transform: rotate(45deg); opacity: 0.8; }
+    .deal-badge { position: absolute; top: 0; right: 0; background: var(--danger); color: white; font-size: 0.65rem; font-weight: bold; padding: 0.25rem 0.5rem; border-bottom-left-radius: 8px; }
+    .flight-meta { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid rgba(255,255,255,0.05); }
+    .price { font-size: 1.5rem; font-weight: 800; color: white; }
+    .price.discount { color: var(--accent); }
+    .price-strike { text-decoration: line-through; color: var(--text-muted); font-size: 0.85rem; margin-right: 0.5rem; }
+    .seats-left { display: inline-flex; align-items: center; gap: 0.25rem; font-size: 0.75rem; color: var(--danger); font-weight: 600; animation: pulse 2s infinite; }
+    .seats-dot { width: 6px; height: 6px; background: var(--danger); border-radius: 50%; }
+    
+    @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
+    @keyframes bounce { 0%, 100% { transform: scaleY(0.4); opacity: 0.6; } 50% { transform: scaleY(1); opacity: 1; } }
+    
+    .airline { display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; color: var(--text-muted); }
+    
+    .user-auth { background: rgba(0, 0, 0, 0.3); padding: 1rem; border-radius: 12px; border: 1px solid var(--glass-border); margin-bottom: 1rem; }
+    select, input[type="text"] { width: 100%; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--glass-border); color: white; padding: 0.6rem 0.75rem; border-radius: 6px; margin-top: 0.5rem; font-family: inherit; outline: none; transition: border-color 0.2s; }
+    select:focus, input[type="text"]:focus { border-color: var(--primary); }
+    .module-card { background: rgba(255, 255, 255, 0.03); border: 1px solid var(--glass-border); border-radius: 12px; padding: 1rem; display: none; }
+    .module-card.active { display: block; animation: fadeIn 0.4s ease-out; }
+    .module-title { font-size: 0.9rem; font-weight: 600; color: var(--accent); margin-bottom: 0.25rem;}
+    .module-content { font-size: 0.8rem; color: var(--text-muted); line-height: 1.4; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    
+    .hud-filter-btn { background: rgba(15,23,42,0.8); color: white; border: 1px solid rgba(255,255,255,0.2); padding: 0.4rem 1.25rem; border-radius: 16px; font-size: 0.75rem; cursor: pointer; transition: 0.2s; box-shadow: none; font-family: 'Inter', sans-serif; }
+    .hud-filter-btn:hover { background: rgba(255,255,255,0.15); }
+    .hud-filter-btn.active { background: var(--primary); border-color: var(--primary); font-weight: 700; box-shadow: 0 0 12px rgba(59,130,246,0.5); }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Auth Portal (Login Screen) -->
+  <div id="auth-portal" style="position: fixed; inset: 0; z-index: 20000; background: url('https://images.unsplash.com/photo-1436491865332-7a61a109cc05?q=80&w=2000&auto=format&fit=crop') center/cover; display: flex; align-items: center; justify-content: center; font-family: 'Inter', sans-serif; transition: opacity 0.6s ease;">
+    <div style="position: absolute; inset: 0; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);"></div>
+    
+    <div id="auth-card" style="position: relative; background: rgba(30, 41, 59, 0.7); border: 1px solid rgba(255,255,255,0.1); border-radius: 24px; padding: 3rem; width: 420px; text-align: center; box-shadow: 0 25px 50px rgba(0,0,0,0.5); animation: fadeIn 0.8s ease;">
+      <div style="font-size: 3rem; margin-bottom: 0.5rem; filter: drop-shadow(0 0 15px rgba(59,130,246,0.6));">✈️</div>
+      <h2 style="color: white; font-size: 1.8rem; font-weight: 900; margin-bottom: 0.5rem; letter-spacing: -0.5px;">Sign in to <span style="background: linear-gradient(to right, #60a5fa, #a78bfa); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">SkyPulse</span></h2>
+      <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 2rem;">Enterprise Aviation Intelligence</p>
+
+      <!-- OAuth Buttons -->
+      <div style="display: flex; flex-direction: column; gap: 1rem; margin-bottom: 2rem;">
+        <button onclick="processLogin('Google Auth API')" style="background: white; color: #333; border: none; padding: 0.8rem; border-radius: 12px; font-weight: 700; font-size: 0.95rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.75rem; transition: transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(255,255,255,0.2)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
+          <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" style="width: 20px; height: 20px;">
+          Continue with Google
+        </button>
+        <button onclick="processLogin('Facebook OAuth')" style="background: #1877F2; color: white; border: none; padding: 0.8rem; border-radius: 12px; font-weight: 700; font-size: 0.95rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.75rem; transition: transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(24, 119, 242, 0.4)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
+          <img src="https://www.svgrepo.com/show/475647/facebook-color.svg" alt="Facebook" style="width: 20px; height: 20px;">
+          Continue with Facebook
+        </button>
+      </div>
+
+      <div style="display: flex; align-items: center; margin-bottom: 2rem;">
+        <div style="flex: 1; height: 1px; background: rgba(255,255,255,0.1);"></div>
+        <div style="color: var(--text-muted); font-size: 0.75rem; padding: 0 1rem; font-weight: 600;">OR</div>
+        <div style="flex: 1; height: 1px; background: rgba(255,255,255,0.1);"></div>
+      </div>
+
+      <!-- Email Login -->
+      <form onsubmit="event.preventDefault(); processLogin('Secure Email Identity');" style="display: flex; flex-direction: column; gap: 1rem;">
+        <input type="email" placeholder="Email address" required style="background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: white; padding: 0.8rem 1rem; border-radius: 12px; font-family: 'Inter', sans-serif; font-size: 0.9rem; outline: none; transition: border-color 0.2s;" onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+        <input type="password" placeholder="Password" required style="background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: white; padding: 0.8rem 1rem; border-radius: 12px; font-family: 'Inter', sans-serif; font-size: 0.9rem; outline: none; transition: border-color 0.2s;" onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+        <button type="submit" style="background: linear-gradient(to right, #3b82f6, #8b5cf6); color: white; border: none; padding: 0.8rem; border-radius: 12px; font-weight: 800; font-size: 1rem; cursor: pointer; margin-top: 0.5rem; transition: transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 10px 20px rgba(139,92,246,0.3)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">Sign In Securely</button>
+      </form>
+
+      <div id="auth-spinner" style="display: none; flex-direction: column; align-items: center; justify-content: center; position: absolute; inset: 0; background: rgba(30, 41, 59, 0.95); border-radius: 24px; backdrop-filter: blur(8px); z-index: 10;">
+        <div style="width: 50px; height: 50px; border: 4px solid rgba(59,130,246,0.2); border-top-color: #3b82f6; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+        <div id="auth-status-text" style="color: white; font-weight: 700; margin-top: 1.5rem; letter-spacing: 0.5px; font-size: 0.95rem;">Initializing Secure Connection...</div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- Welcome Splash Screen Modal -->
+  <div id="welcome-splash" style="position: fixed; inset: 0; z-index: 10000; background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: 'Inter', sans-serif; transition: opacity 0.5s ease;">
+    
+    <div style="text-align: center; margin-bottom: 4rem; animation: fadeIn 0.8s ease;">
+      <div style="font-size: 5rem; filter: drop-shadow(0 0 25px rgba(59,130,246,0.6)); margin-bottom: 1rem;">✈️</div>
+      <h1 style="color: white; font-weight: 900; font-size: 3rem; letter-spacing: -1px; margin: 0 0 0.5rem 0;">Welcome to <span style="background: linear-gradient(to right, #60a5fa, #a78bfa); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">SkyPulse</span></h1>
+      <p style="color: var(--text-muted); font-size: 1.1rem; max-width: 500px; line-height: 1.5;">The ultimate enterprise aviation dashboard. Select a module to initialize your session.</p>
+    </div>
+
+    <div style="display: flex; gap: 2rem; max-width: 1250px; flex-wrap: wrap; justify-content: center; padding: 0 2rem; animation: fadeIn 1.2s ease;">
+      <div onclick="launchModule('radar')" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 2.5rem 2rem; width: 280px; text-align: center; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 10px 30px rgba(0,0,0,0.5);" onmouseover="this.style.transform='translateY(-10px)'; this.style.borderColor='var(--primary)'; this.style.background='rgba(59,130,246,0.1)'" onmouseout="this.style.transform='translateY(0)'; this.style.borderColor='rgba(255,255,255,0.1)'; this.style.background='rgba(255,255,255,0.03)'">
+        <div style="font-size: 3rem; margin-bottom: 1.5rem;">📡</div>
+        <h3 style="color: white; font-size: 1.3rem; margin: 0 0 0.75rem 0;">Live Flight Tracking</h3>
+        <p style="color: var(--text-muted); font-size: 0.85rem; line-height: 1.5;">Access real-time global telemetry, military radar, and live atmospheric systems.</p>
+      </div>
+
+      <div onclick="launchModule('deals')" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 2.5rem 2rem; width: 280px; text-align: center; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); position: relative; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5);" onmouseover="this.style.transform='translateY(-10px)'; this.style.borderColor='#ef4444'; this.style.background='rgba(239,68,68,0.1)'" onmouseout="this.style.transform='translateY(0)'; this.style.borderColor='rgba(255,255,255,0.1)'; this.style.background='rgba(255,255,255,0.03)'">
+        <div style="position: absolute; top: 1.25rem; right: -2rem; background: #ef4444; color: white; transform: rotate(45deg); padding: 0.2rem 2.5rem; font-size: 0.65rem; font-weight: bold; letter-spacing: 1px; box-shadow: 0 2px 10px rgba(239, 68, 68, 0.5);">HOT</div>
+        <div style="font-size: 3rem; margin-bottom: 1.5rem;">⏱️</div>
+        <h3 style="color: white; font-size: 1.3rem; margin: 0 0 0.75rem 0;">Last Minute Deals</h3>
+        <p style="color: var(--text-muted); font-size: 0.85rem; line-height: 1.5;">Immediate massive discounts and seat clearances departing in the next 12 to 24 hours.</p>
+      </div>
+
+      <div onclick="launchModule('weekly')" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 2.5rem 2rem; width: 280px; text-align: center; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); position: relative; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5);" onmouseover="this.style.transform='translateY(-10px)'; this.style.borderColor='#f59e0b'; this.style.background='rgba(245,158,11,0.1)'" onmouseout="this.style.transform='translateY(0)'; this.style.borderColor='rgba(255,255,255,0.1)'; this.style.background='rgba(255,255,255,0.03)'">
+        <div style="font-size: 3rem; margin-bottom: 1.5rem;">🌟</div>
+        <h3 style="color: white; font-size: 1.3rem; margin: 0 0 0.75rem 0;">Deals of the Week</h3>
+        <p style="color: var(--text-muted); font-size: 0.85rem; line-height: 1.5;">Hand-picked massive price drops and flash sales departing within the next 2 to 7 days.</p>
+      </div>
+
+      <div onclick="launchModule('future')" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 2.5rem 2rem; width: 280px; text-align: center; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 10px 30px rgba(0,0,0,0.5);" onmouseover="this.style.transform='translateY(-10px)'; this.style.borderColor='#10b981'; this.style.background='rgba(16,185,129,0.1)'" onmouseout="this.style.transform='translateY(0)'; this.style.borderColor='rgba(255,255,255,0.1)'; this.style.background='rgba(255,255,255,0.03)'">
+        <div style="font-size: 3rem; margin-bottom: 1.5rem;">📆</div>
+        <h3 style="color: white; font-size: 1.3rem; margin: 0 0 0.75rem 0;">Next Month Deals</h3>
+        <p style="color: var(--text-muted); font-size: 0.85rem; line-height: 1.5;">Plan ahead. Automatically scan schedules and lock-in futuristic discounts for exactly next month.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Full Screen Mode Floating Menu Button -->
+  <div id="floating-menu-btn" onclick="document.getElementById('welcome-splash').style.display='flex'; setTimeout(() => document.getElementById('welcome-splash').style.opacity='1', 10);" style="display: none; position: absolute; top: 1.5rem; left: 1.5rem; z-index: 50; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.15); border-radius: 16px; padding: 0.6rem 1rem; color: white; cursor: pointer; align-items: center; gap: 0.5rem; box-shadow: 0 4px 20px rgba(0,0,0,0.6); transition: background 0.2s;" onmouseover="this.style.background='rgba(59,130,246,0.2)'" onmouseout="this.style.background='rgba(15, 23, 42, 0.85)'">
+    <span style="font-size: 1.2rem;">☰</span>
+    <span style="font-weight: 800; font-family: 'Inter', sans-serif;">Main Menu</span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="brand" onclick="document.getElementById('welcome-splash').style.display='flex'; setTimeout(() => document.getElementById('welcome-splash').style.opacity='1', 10);" style="cursor: pointer; transition: opacity 0.2s;" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">
+      <div class="brand-icon">✈️</div>
+      <div class="brand-text">SkyPulse</div>
+    </div>
+
+    <!-- Zayd Aviation PRO Subscription Banner -->
+    <div style="background: linear-gradient(135deg, rgba(59,130,246,0.15) 0%, rgba(139,92,246,0.15) 100%); border: 1px solid rgba(139,92,246,0.4); border-radius: 12px; padding: 1rem; margin-bottom: 1.5rem; display: flex; align-items: center; justify-content: space-between; cursor: pointer; transition: transform 0.2s; box-shadow: 0 4px 15px rgba(0,0,0,0.3);" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'" onclick="document.getElementById('pro-modal').style.display='flex'">
+      <div>
+        <div style="font-size: 0.9rem; font-weight: 800; color: white;">SkyPulse <span style="background: linear-gradient(to right, #60a5fa, #a78bfa); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">PRO</span></div>
+        <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 0.2rem;">Unlock Global Features</div>
+      </div>
+      <div style="background: white; color: #0f172a; padding: 0.3rem 0.6rem; border-radius: 20px; font-size: 0.7rem; font-weight: bold;">£1.99/mo</div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('deals', this)">Deals</button>
+      <button class="tab-btn" onclick="if(isPro()) switchTab('tracked', this); else showPaywall();">FR24 Analytics <span style="font-size: 0.6rem; margin-left: 0.2rem;">💎</span></button>
+      <button class="tab-btn" onclick="switchTab('settings', this)">Config</button>
+    </div>
+
+    <!-- TAB: DEALS AND FLIGHTS -->
+    <div id="tab-deals" class="tab-content active">
+      
+      <!-- Skyscanner Search Button -->
+      <a href="https://www.skyscanner.net" target="_blank" style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; background: #0770e3; color: white; padding: 0.8rem 1rem; border-radius: 12px; font-weight: 700; text-decoration: none; margin-bottom: 0.5rem; transition: transform 0.2s, background 0.2s; box-shadow: 0 4px 12px rgba(7, 112, 227, 0.4);" onmouseover="this.style.transform='translateY(-2px)'; this.style.background='#005eb8'" onmouseout="this.style.transform='translateY(0)'; this.style.background='#0770e3'">
+        <span style="font-size: 1.2rem;">✈️</span> Search Flights on Skyscanner <span style="font-size: 0.9rem; margin-left: 0.25rem;">↗</span>
+      </a>
+
+      <div>
+        <!-- Deals Sub-Navigation Pills -->
+        <div style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem; background: rgba(0,0,0,0.2); padding: 0.35rem; border-radius: 8px;">
+          <button onclick="launchModule('deals')" style="flex:1; background: var(--primary); color: white; border: none; padding: 0.5rem; border-radius: 6px; font-size: 0.7rem; font-weight: bold; cursor: pointer; transition: 0.2s;" onmouseover="this.style.opacity=0.8" onmouseout="this.style.opacity=1" id="pill-current">Last Min</button>
+          <button onclick="launchModule('weekly')" style="flex:1; background: transparent; color: var(--text-muted); border: none; padding: 0.5rem; border-radius: 6px; font-size: 0.7rem; font-weight: bold; cursor: pointer; transition: 0.2s;" onmouseover="this.style.color='white'" onmouseout="if(dealsMode!=='weekly') this.style.color='var(--text-muted)'" id="pill-weekly">This Week</button>
+          <button onclick="launchModule('future')" style="flex:1; background: transparent; color: var(--text-muted); border: none; padding: 0.5rem; border-radius: 6px; font-size: 0.7rem; font-weight: bold; cursor: pointer; transition: 0.2s;" onmouseover="this.style.color='white'" onmouseout="if(dealsMode!=='future') this.style.color='var(--text-muted)'" id="pill-future">Next Month</button>
+        </div>
+
+        <div id="deals-header" class="section-title">
+          <span style="color:var(--danger)">🔥</span> Live Deals Radar
+          <span style="margin-left:auto; font-size:0.65rem; background:rgba(239, 68, 68, 0.2); color:var(--danger); padding:0.2rem 0.4rem; border-radius:4px; animation: pulse 2s infinite;">POLLING...</span>
+        </div>
+        
+        <div id="live-deals-container" style="transition: opacity 0.3s ease-in-out; min-height: 250px;">
+          <!-- dynamically populated by JS -->
+        </div>
+      </div>
+
+      <div>
+        <div class="section-title" style="margin-top: 0.5rem; color: #f8fafc;">📅 Cheap Flights Sooner (March/April 2026)</div>
+
+        <!-- Europe -->
+        <div style="color: #3b82f6; font-size: 0.8rem; font-weight: bold; margin-bottom: 0.5rem;">EUROPE</div>
+        <div class="flight-card" style="padding: 0.75rem;">
+          <div class="route" style="margin-bottom: 0.25rem;">
+            <div class="airport" style="font-size:1rem;">EDI<small>Edinburgh</small></div>
+            <div class="plane-icon" style="color:white; font-size:1rem;">✈</div>
+            <div class="airport" style="text-align:right; font-size:1rem;">AMS<small>Amsterdam</small></div>
+          </div>
+          <div class="airline">✈️ KLM · KL1078</div>
+          <div class="flight-meta" style="margin-top:0.5rem; padding-top:0.5rem;">
+            <div style="font-size:0.75rem; color:var(--text-muted); font-weight:600;">March 23, 2026 · 09:20 AM</div>
+            <div class="price discount" style="font-size:1.1rem">£22 <span style="font-size:0.6rem; color:var(--text-muted); font-weight:normal; text-decoration:line-through; margin-left:0.2rem;">£98</span></div>
+          </div>
+        </div>
+        
+        <div class="flight-card" style="padding: 0.75rem;">
+          <div class="route" style="margin-bottom: 0.25rem;">
+            <div class="airport" style="font-size:1rem;">LHR<small>London</small></div>
+            <div class="plane-icon" style="color:white; font-size:1rem;">✈</div>
+            <div class="airport" style="text-align:right; font-size:1rem;">CDG<small>Paris</small></div>
+          </div>
+          <div class="airline">✈️ British Airways · BA302</div>
+          <div class="flight-meta" style="margin-top:0.5rem; padding-top:0.5rem;">
+            <div style="font-size:0.75rem; color:var(--text-muted); font-weight:600;">March 25, 2026 · 14:15 PM</div>
+            <div class="price discount" style="font-size:1.1rem">£18 <span style="font-size:0.6rem; color:var(--text-muted); font-weight:normal; text-decoration:line-through; margin-left:0.2rem;">£65</span></div>
+          </div>
+        </div>
+
+        <!-- United States -->
+        <div style="color: #3b82f6; font-size: 0.8rem; font-weight: bold; margin-top: 1rem; margin-bottom: 0.5rem;">UNITED STATES & AMERICAS</div>
+        <div class="flight-card" style="padding: 0.75rem;">
+          <div class="route" style="margin-bottom: 0.25rem;">
+            <div class="airport" style="font-size:1rem;">LGW<small>London Gatwick</small></div>
+            <div class="plane-icon" style="color:white; font-size:1rem;">✈</div>
+            <div class="airport" style="text-align:right; font-size:1rem;">MCO<small>Orlando</small></div>
+          </div>
+          <div class="airline">✈️ British Airways · BA2037</div>
+          <div class="flight-meta" style="margin-top:0.5rem; padding-top:0.5rem;">
+            <div style="font-size:0.75rem; color:var(--text-muted); font-weight:600;">March 26, 2026 · 11:40 AM</div>
+            <div class="price discount" style="font-size:1.1rem">£199 <span style="font-size:0.6rem; color:var(--text-muted); font-weight:normal; text-decoration:line-through; margin-left:0.2rem;">£512</span></div>
+          </div>
+        </div>
+
+        <div class="flight-card" style="padding: 0.75rem;">
+          <div class="route" style="margin-bottom: 0.25rem;">
+            <div class="airport" style="font-size:1rem;">LHR<small>London Heathrow</small></div>
+            <div class="plane-icon" style="color:white; font-size:1rem;">✈</div>
+            <div class="airport" style="text-align:right; font-size:1rem;">JFK<small>New York</small></div>
+          </div>
+          <div class="airline">✈️ Virgin Atlantic · VS11</div>
+          <div class="flight-meta" style="margin-top:0.5rem; padding-top:0.5rem;">
+            <div style="font-size:0.75rem; color:var(--text-muted); font-weight:600;">April 2, 2026 · 16:00 PM</div>
+            <div class="price discount" style="font-size:1.1rem">£175 <span style="font-size:0.6rem; color:var(--text-muted); font-weight:normal; text-decoration:line-through; margin-left:0.2rem;">£420</span></div>
+          </div>
+        </div>
+
+        <!-- Middle East -->
+        <div style="color: #3b82f6; font-size: 0.8rem; font-weight: bold; margin-top: 1rem; margin-bottom: 0.5rem;">MIDDLE EAST</div>
+        <div class="flight-card" style="padding: 0.75rem;">
+          <div class="route" style="margin-bottom: 0.25rem;">
+            <div class="airport" style="font-size:1rem;">MAN<small>Manchester</small></div>
+            <div class="plane-icon" style="color:white; font-size:1rem;">✈</div>
+            <div class="airport" style="text-align:right; font-size:1rem;">DXB<small>Dubai Int'l</small></div>
+          </div>
+          <div class="airline">✈️ Emirates · EK18</div>
+          <div class="flight-meta" style="margin-top:0.5rem; padding-top:0.5rem;">
+            <div style="font-size:0.75rem; color:var(--text-muted); font-weight:600;">March 29, 2026 · 21:15 PM</div>
+            <div class="price discount" style="font-size:1.1rem">£240 <span style="font-size:0.6rem; color:var(--text-muted); font-weight:normal; text-decoration:line-through; margin-left:0.2rem;">£600</span></div>
+          </div>
+        </div>
+
+        <div class="flight-card" style="padding: 0.75rem;">
+          <div class="route" style="margin-bottom: 0.25rem;">
+            <div class="airport" style="font-size:1rem;">LHR<small>London Heathrow</small></div>
+            <div class="plane-icon" style="color:white; font-size:1rem;">✈</div>
+            <div class="airport" style="text-align:right; font-size:1rem;">DOH<small>Doha</small></div>
+          </div>
+          <div class="airline">✈️ Qatar Airways · QR4</div>
+          <div class="flight-meta" style="margin-top:0.5rem; padding-top:0.5rem;">
+            <div style="font-size:0.75rem; color:var(--text-muted); font-weight:600;">April 4, 2026 · 15:05 PM</div>
+            <div class="price discount" style="font-size:1.1rem">£280 <span style="font-size:0.6rem; color:var(--text-muted); font-weight:normal; text-decoration:line-through; margin-left:0.2rem;">£580</span></div>
+          </div>
+        </div>
+
+        <!-- Asia -->
+        <div style="color: #3b82f6; font-size: 0.8rem; font-weight: bold; margin-top: 1rem; margin-bottom: 0.5rem;">ASIA & PACIFIC</div>
+        <div class="flight-card" style="padding: 0.75rem;">
+          <div class="route" style="margin-bottom: 0.25rem;">
+            <div class="airport" style="font-size:1rem;">LHR<small>London Heathrow</small></div>
+            <div class="plane-icon" style="color:white; font-size:1rem;">✈</div>
+            <div class="airport" style="text-align:right; font-size:1rem;">HND<small>Tokyo Haneda</small></div>
+          </div>
+          <div class="airline">✈️ ANA · NH212</div>
+          <div class="flight-meta" style="margin-top:0.5rem; padding-top:0.5rem;">
+            <div style="font-size:0.75rem; color:var(--text-muted); font-weight:600;">April 7, 2026 · 19:00 PM</div>
+            <div class="price discount" style="font-size:1.1rem">£450 <span style="font-size:0.6rem; color:var(--text-muted); font-weight:normal; text-decoration:line-through; margin-left:0.2rem;">£850</span></div>
+          </div>
+        </div>
+
+        <div class="flight-card" style="padding: 0.75rem;">
+          <div class="route" style="margin-bottom: 0.25rem;">
+            <div class="airport" style="font-size:1rem;">LHR<small>London Heathrow</small></div>
+            <div class="plane-icon" style="color:white; font-size:1rem;">✈</div>
+            <div class="airport" style="text-align:right; font-size:1rem;">SIN<small>Singapore</small></div>
+          </div>
+          <div class="airline">✈️ Singapore Airlines · SQ317</div>
+          <div class="flight-meta" style="margin-top:0.5rem; padding-top:0.5rem;">
+            <div style="font-size:0.75rem; color:var(--text-muted); font-weight:600;">April 10, 2026 · 20:30 PM</div>
+            <div class="price discount" style="font-size:1.1rem">£390 <span style="font-size:0.6rem; color:var(--text-muted); font-weight:normal; text-decoration:line-through; margin-left:0.2rem;">£930</span></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+
+    <!-- TAB: MOST TRACKED (TRENDING) -->
+    <div id="tab-tracked" class="tab-content">
+      <div class="section-title">🚨 Squawk 7700 (Emergencies)</div>
+      <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); padding: 1rem; border-radius: 8px; color: #10b981; font-size: 0.8rem; text-align: center; margin-bottom: 1.5rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+        <div style="width: 8px; height: 8px; background: #10b981; border-radius: 50%; box-shadow: 0 0 8px #10b981;"></div> No active 7700s worldwide.
+      </div>
+
+      <div class="section-title">🔥 Most Tracked Flights Right Now</div>
+      
+      <div class="flight-card" style="border-left: 3px solid var(--primary); padding: 0.75rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
+          <div style="font-size: 0.7rem; font-weight: bold; color: var(--text-muted); background: rgba(0,0,0,0.5); padding: 0.2rem 0.4rem; border-radius: 4px;">#1 TRACKED</div>
+          <div style="font-size: 0.7rem; color: var(--primary); font-weight: bold;">45,210 tracking</div>
+        </div>
+        <div class="route" style="margin-bottom: 0.25rem; margin-top: 0.5rem;">
+          <div class="airport" style="font-size:1rem;">N/A<small>Unknown Origin</small></div>
+          <div class="plane-icon" style="color:white; font-size:1rem;">✈</div>
+          <div class="airport" style="text-align:right; font-size:1rem;">N/A<small>Unknown Dest</small></div>
+        </div>
+        <div class="airline" style="color: white; font-weight: bold;">✈️ RRR101 · Royal Air Force VIP</div>
+      </div>
+      
+      <div class="flight-card" style="padding: 0.75rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
+          <div style="font-size: 0.7rem; font-weight: bold; color: var(--text-muted); background: rgba(0,0,0,0.5); padding: 0.2rem 0.4rem; border-radius: 4px;">#2 TRACKED</div>
+          <div style="font-size: 0.7rem; color: var(--primary); font-weight: bold;">12,042 tracking</div>
+        </div>
+        <div class="route" style="margin-bottom: 0.25rem; margin-top: 0.5rem;">
+          <div class="airport" style="font-size:1rem;">MIA<small>Miami</small></div>
+          <div class="plane-icon" style="color:white; font-size:1rem;">✈</div>
+          <div class="airport" style="text-align:right; font-size:1rem;">LHR<small>Heathrow</small></div>
+        </div>
+        <div class="airline" style="color: var(--warning);">✈️ VIR12 · Virgin Atlantic <span style="font-size: 0.65rem; background: rgba(245, 158, 11, 0.2); padding: 0.1rem 0.3rem; border-radius: 4px; margin-left: 0.3rem;">DIVERSION</span></div>
+      </div>
+    </div>
+
+    <!-- TAB: SETTINGS & EXPERIMENTAL FEATURES -->
+    <div id="tab-settings" class="tab-content">
+      <div class="user-auth">
+        <label for="mapSource" style="font-size: 0.8rem; color: var(--text-muted);">Radar Source</label>
+        <select id="mapSource" onchange="changeMapSource()">
+          <option value="https://globe.adsbexchange.com/?zoom=6&lat=54&lon=-2.5&hideSidebar=1">ADSB Exchange (Maximum Global Accuracy)</option>
+          <option value="https://globe.adsb.fi/?zoom=6&lat=54&lon=-2.5&hideSidebar=1">ADSB.fi (Commercial & Ad-Free fallback)</option>
+        </select>
+        <p style="font-size: 0.7rem; color: #64748b; margin-top: 0.5rem;">
+          UK Coordinates applied by default.
+        </p>
+      </div>
+
+      <div class="user-auth">
+        <label for="userId" style="font-size: 0.8rem; color: var(--text-muted);">Feature Flag User ID</label>
+        <input type="text" id="userId" value="pilot_007" placeholder="Enter User ID..." onkeyup="evaluateFlags()">
+      </div>
+
+      <div class="section-title">Developer Settings</div>
+      <div style="background: rgba(255, 255, 255, 0.05); border: 1px dashed var(--danger); border-radius: 8px; padding: 1rem; text-align: center;">
+        <p style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 0.5rem;" id="pro-status-text">Testing the paywall states locally.</p>
+        <button onclick="localStorage.setItem('skypulse_pro', 'true'); location.reload();" style="background: #10b981; color: white; border: none; padding: 0.4rem 1rem; border-radius: 6px; font-size: 0.7rem; font-weight: bold; cursor: pointer; margin-right: 0.5rem;">🔓 Bypass Paywall</button>
+        <button onclick="localStorage.removeItem('skypulse_pro'); location.reload();" style="background: #ef4444; color: white; border: none; padding: 0.4rem 1rem; border-radius: 6px; font-size: 0.7rem; font-weight: bold; cursor: pointer;">🔒 Re-Lock PRO</button>
+      </div>
+
+      <button onclick="logout()" style="background: transparent; color: var(--danger); border: 1px solid rgba(239,68,68,0.3); padding: 0.8rem; border-radius: 12px; font-size: 0.85rem; font-weight: 800; cursor: pointer; margin-top: 1.5rem; width: 100%; transition: 0.2s;" onmouseover="this.style.background='rgba(239,68,68,0.1)'" onmouseout="this.style.background='transparent'">🚪 Secure Logout</button>
+
+    </div>
+  </aside>
+
+  <!-- Radar Map pushed to the right side of the flex container -->
+  <iframe id="map-frame" src="https://globe.adsbexchange.com/?zoom=9&lat=51.47&lon=-0.45&hideSidebar=1&map=esri" title="Live Flight Map"></iframe>
+
+  <!-- Cinematic Travel Hero Element (Hidden by default, shown for Deals) -->
+  <div id="travel-hero" style="display: none; flex: 1; background-size: cover; background-position: center; position: relative;">
+    <div style="position: absolute; inset: 0; background: linear-gradient(to right, rgba(15,23,42,0.95) 0%, rgba(15,23,42,0.3) 50%, rgba(0,0,0,0.6) 100%);"></div>
+    <div id="travel-hero-text" style="position: absolute; bottom: 3rem; right: 3rem; text-align: right; color: white; animation: fadeIn 1s ease;">
+      <h2 id="travel-hero-title" style="font-size: 5rem; font-weight: 900; margin: 0; letter-spacing: -2px; text-shadow: 0 10px 40px rgba(0,0,0,0.9);">Maldives</h2>
+      <p id="travel-hero-sub" style="font-size: 1.4rem; font-weight: 600; color: #cbd5e1; text-shadow: 0 4px 20px rgba(0,0,0,0.9); margin: 0;">Featured Destination of the Week</p>
+    </div>
+  </div>
+
+  <!-- Top Center Radar Search HUD -->
+  <div id="search-hud" style="position: absolute; top: 1.5rem; left: calc(50% + var(--panel-width)/2); transform: translateX(-50%); z-index: 50; display: flex; flex-direction: column; align-items: center; gap: 0.75rem; pointer-events: none; transition: left 0.3s ease;">
+    <!-- Search Bar -->
+    <div style="display: flex; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.15); border-radius: 24px; padding: 0.6rem 1.25rem; width: 470px; box-shadow: 0 4px 20px rgba(0,0,0,0.6); pointer-events: auto; transition: border-color 0.2s;">
+      <span style="color: var(--text-muted); font-size: 1.2rem; margin-right: 0.75rem;">🔍</span>
+      <input type="text" placeholder="Search flight, airport, or squawk 💎" style="background: transparent; border: none; color: white; width: 100%; outline: none; font-size: 0.9rem; font-family: 'Inter', sans-serif;" onfocus="if(!isPro()){ showPaywall(); this.blur(); } else { this.parentElement.style.borderColor='var(--primary)'; }" onblur="this.parentElement.style.borderColor='rgba(255,255,255,0.15)'" onkeypress="if(isPro()) handleSearch(event)">
+    </div>
+    <!-- Filters Row -->
+    <div style="display: flex; gap: 0.5rem; pointer-events: auto;">
+      <button onclick="setMapFilter('all', this)" class="hud-filter-btn active">All Flights</button>
+      <button onclick="setMapFilter('mil', this)" class="hud-filter-btn">Military</button>
+      <button onclick="setMapFilter('com', this)" class="hud-filter-btn">Commercial</button>
+      <button onclick="if(isPro()) setMapFilter('wx', this); else showPaywall();" class="hud-filter-btn">Weather ⛅ <span style="font-size: 0.6rem; margin-left: 0.2rem;">💎</span></button>
+      
+      <button onclick="const f=document.getElementById('map-frame'); f.src=f.src;" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.4); padding: 0.4rem 1rem; border-radius: 16px; font-size: 0.75rem; font-weight: bold; cursor: pointer; transition: 0.2s; margin-left: 0.5rem;" onmouseover="this.style.background='rgba(16, 185, 129, 0.3)'" onmouseout="this.style.background='rgba(16, 185, 129, 0.15)'">🔄 Sync</button>
+    </div>
+  </div>
+
+  <!-- Top Right Network Stats HUD -->
+  <div style="position: absolute; top: 1.5rem; right: 1.5rem; z-index: 50; background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 0.75rem 1.25rem; color: white; font-family: 'Inter', sans-serif; display: flex; flex-direction: column; gap: 0.25rem; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
+    <div style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em; display: flex; align-items: center; gap: 0.4rem; font-weight: bold; margin-bottom: 0.25rem;">
+      <div style="width:6px; height:6px; background:#10b981; border-radius:50%; animation: pulse 1.5s infinite; box-shadow: 0 0 5px #10b981;"></div>
+      🛰️ Satcom & Radar Uplink
+    </div>
+    <div style="font-size: 1.3rem; font-weight: 800; color: var(--primary); font-family: monospace;">13,492 <span style="font-size:0.7rem; color: var(--text-muted); font-weight: 600; font-family: 'Inter', sans-serif;">AIRBORNE</span></div>
+    <div style="font-size: 0.7rem; font-weight: 500; font-family: monospace; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 0.4rem; margin-top: 0.2rem;"><span style="color: var(--accent);">9,420</span> ADSB Radars Online</div>
+    <div style="font-size: 0.7rem; font-weight: 500; font-family: monospace; color: #60a5fa;"><span style="color: white;">📡</span> Global Satellite Tracking: <span style="color: #10b981;">ACTIVE</span></div>
+  </div>
+
+  <!-- Floating ATC Square Button (Right Side) -->
+  <div onclick="if(isPro()) toggleATC(); else showPaywall();" style="position: absolute; top: 8.25rem; right: 1.5rem; z-index: 50; width: 45px; height: 45px; background: rgba(16, 185, 129, 0.85); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.2); border-radius: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.5); transition: all 0.2s;" onmouseover="this.style.transform='scale(1.1)'; this.style.background='rgba(59,130,246,0.2)';" onmouseout="this.style.transform='scale(1)'; this.style.background='rgba(16, 185, 129, 0.85)';" title="Live ATC Radio 💎">
+    <span style="font-size: 1.4rem;">📻</span>
+    <div style="position: absolute; top: -6px; right: -6px; font-size: 0.6rem; background: #8b5cf6; border-radius: 50%; padding: 0.15rem; border: 2px solid #0f172a; box-shadow: 0 2px 5px rgba(0,0,0,0.5);">💎</div>
+  </div>
+
+  <!-- Modern Digital Fleet Telemetry HUD (Bottom Right) -->
+  <div id="fleet-hud" style="position: absolute; bottom: 1.5rem; right: 1.5rem; z-index: 50; width: 340px; background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 16px; padding: 1rem; color: white; display: flex; flex-direction: column; gap: 0.75rem; box-shadow: 0 10px 30px rgba(0,0,0,0.5); font-family: 'Inter', sans-serif;">
+    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem;">
+      <div style="font-size: 0.7rem; color: var(--primary); text-transform: uppercase; letter-spacing: 0.15em; font-weight: 800; display: flex; align-items: center; gap: 0.4rem;"><div style="width: 6px; height: 6px; background: #3b82f6; border-radius: 50%; box-shadow: 0 0 8px #3b82f6; animation: pulse 2s infinite;"></div> DIGITAL TELEMETRY</div>
+      <div style="font-size: 0.65rem; color: var(--text-muted); font-family: monospace;">LIVE LINK</div>
+    </div>
+    <!-- Hint instruction -->
+    <div style="font-size: 0.65rem; color: #f59e0b; text-align: center; margin-top: -0.2rem; margin-bottom: 0.2rem;">Click an Aircraft to Launch FR24 Inspector Overlay</div>
+    <div id="fleet-list" style="display: flex; flex-direction: column; gap: 0.5rem;">
+      <!-- Pulled dynamically via JS -->
+    </div>
+  </div>
+
+  <!-- FR24 Style Flight Inspector Panel (Hidden by default off-screen left) -->
+  <div id="fr24-inspector" style="transform: translateX(-110%); position: absolute; top: 1.5rem; left: 1.5rem; bottom: 1.5rem; width: 360px; background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.15); border-radius: 16px; z-index: 100; color: white; font-family: 'Inter', sans-serif; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.8); transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);">
+    
+    <!-- Photo Header -->
+    <div style="height: 180px; background: url('https://images.unsplash.com/photo-1542296332207-bf2b66babeac?q=80&w=800&auto=format&fit=crop') center/cover; position: relative;">
+      <button onclick="document.getElementById('fr24-inspector').style.transform='translateX(-110%)'" style="position: absolute; top: 0.75rem; right: 0.75rem; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.2); color: white; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-size: 1.2rem; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); transition: 0.2s;" onmouseover="this.style.background='rgba(239,68,68,0.8)'" onmouseout="this.style.background='rgba(0,0,0,0.6)'">&times;</button>
+      <div style="position: absolute; bottom: 0; left: 0; right: 0; padding: 1rem; background: linear-gradient(to top, rgba(0,0,0,0.95), transparent);">
+        <div id="insp-callsign" style="font-size: 1.8rem; font-weight: 900; font-family: monospace; letter-spacing: 0.05em; text-shadow: 0 2px 4px rgba(0,0,0,0.8);">DLH4A</div>
+        <div id="insp-type" style="font-size: 0.85rem; color: #cbd5e1; font-weight: 600; text-shadow: 0 2px 4px rgba(0,0,0,0.8);">Lufthansa · Airbus A320</div>
+      </div>
+    </div>
+
+    <!-- Route Data -->
+    <div style="padding: 1.5rem; flex: 1; display: flex; flex-direction: column;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+        <div style="text-align: center;">
+          <div id="insp-origin" style="font-size: 1.8rem; font-weight: 800; color: white;">FRA</div>
+          <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">Frankfurt</div>
+        </div>
+        <div style="flex: 1; margin: 0 1rem; position: relative; height: 3px; background: rgba(255,255,255,0.1); border-radius: 2px;">
+          <div style="position: absolute; top: -12px; left: 45%; color: #60a5fa; font-size: 1.4rem; text-shadow: 0 0 10px #60a5fa;">✈</div>
+          <div style="width: 45%; height: 100%; background: #60a5fa; border-radius: 2px; box-shadow: 0 0 8px #60a5fa;"></div>
+        </div>
+        <div style="text-align: center;">
+          <div id="insp-dest" style="font-size: 1.8rem; font-weight: 800; color: white;">LHR</div>
+          <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">London</div>
+        </div>
+      </div>
+
+      <!-- FR24 Telemetry Metrics -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 2rem;">
+        <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); padding: 0.8rem; border-radius: 12px; box-shadow: inset 0 2px 10px rgba(0,0,0,0.2);">
+          <div style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.25rem;">Calibrated Altitude</div>
+          <div id="insp-alt" style="font-size: 1.25rem; font-weight: bold; color: #10b981; font-family: monospace;">35,018 ft</div>
+        </div>
+        <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); padding: 0.8rem; border-radius: 12px; box-shadow: inset 0 2px 10px rgba(0,0,0,0.2);">
+          <div style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.25rem;">Ground Speed</div>
+          <div id="insp-speed" style="font-size: 1.25rem; font-weight: bold; color: #f59e0b; font-family: monospace;">492 kts</div>
+        </div>
+        <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); padding: 0.8rem; border-radius: 12px; box-shadow: inset 0 2px 10px rgba(0,0,0,0.2);">
+          <div style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.25rem;">Vertical Speed</div>
+          <div style="font-size: 1.25rem; font-weight: bold; color: white; font-family: monospace;">-1,200 fpm</div>
+        </div>
+        <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); padding: 0.8rem; border-radius: 12px; box-shadow: inset 0 2px 10px rgba(0,0,0,0.2);">
+          <div style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.25rem;">Squawk Code</div>
+          <div style="font-size: 1.25rem; font-weight: bold; color: white; font-family: monospace;">1000</div>
+        </div>
+      </div>
+
+      <!-- Altitude Graph Mock -->
+      <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.75rem; display: flex; justify-content: space-between; font-weight: 800;">
+        <span>Flight Profile History</span> <span style="color: #60a5fa;">FR24 Connect</span>
+      </div>
+      <div style="height: 80px; background: rgba(0,0,0,0.4); border-radius: 12px; position: relative; overflow: hidden; border-bottom: 1px solid rgba(255,255,255,0.1); border-left: 1px solid rgba(255,255,255,0.1); flex-shrink: 0;">
+        <!-- SVG Line Chart Mock -->
+        <svg viewBox="0 0 100 100" preserveAspectRatio="none" style="width: 100%; height: 100%; position: absolute; bottom: 0;">
+          <defs>
+            <linearGradient id="chartGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="rgba(59,130,246,0.3)"></stop>
+              <stop offset="100%" stop-color="rgba(59,130,246,0)"></stop>
+            </linearGradient>
+          </defs>
+          <path d="M0,100 L10,20 L40,20 L60,40 L80,30 L100,50" fill="none" stroke="#3b82f6" stroke-width="2" vector-effect="non-scaling-stroke"></path>
+          <path d="M0,100 L10,20 L40,20 L60,40 L80,30 L100,50 L100,100 Z" fill="url(#chartGrad)" stroke="none"></path>
+        </svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- Subscription Checkout UI Modal -->
+  <div id="pro-modal" style="display: none; position: fixed; inset: 0; z-index: 9999; background: rgba(15,23,42,0.9); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); align-items: center; justify-content: center; font-family: 'Inter', sans-serif;">
+    <div id="pro-modal-box" style="background: #0f172a; border: 1px solid rgba(139,92,246,0.3); border-radius: 24px; padding: 2.5rem; width: 400px; max-width: 90vw; position: relative; box-shadow: 0 25px 50px -12px rgba(139,92,246,0.25); transition: width 0.3s ease, padding 0.3s ease;">
+      
+      <button style="position: absolute; top: 1.5rem; right: 1.5rem; background: rgba(255,255,255,0.1); border: none; color: var(--text-muted); font-size: 1.2rem; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; transition: 0.2s; z-index: 10;" onmouseover="this.style.background='rgba(255,255,255,0.2)'" onmouseout="this.style.background='rgba(255,255,255,0.1)'" onclick="document.getElementById('pro-modal').style.display='none'; if(document.getElementById('pro-checkout-content')) document.getElementById('pro-checkout-content').style.display='none'; document.getElementById('pro-promo-content').style.display='block';">✕</button>
+
+      <!-- Promo Content Section -->
+      <div id="pro-promo-content">
+        <div style="text-align: center; margin-bottom: 2rem;">
+          <div style="font-size: 3.5rem; margin-bottom: 0.5rem; filter: drop-shadow(0 0 10px rgba(139,92,246,0.5));">💎</div>
+          <h2 style="font-size: 1.5rem; color: white; margin-bottom: 0.5rem;">Upgrade to Pro</h2>
+          <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.5;">Get immediate access to premium radar layers, historical flight data, and priority network connections.</p>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 1rem; margin-bottom: 2rem; background: rgba(0,0,0,0.3); padding: 1.25rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
+          <div style="display: flex; align-items: center; gap: 0.75rem; font-size: 0.9rem; color: #f8fafc;"><span style="color:#10b981; font-weight: bold;">✔</span> Live Air Traffic Control (ATC) Audio 📻</div>
+          <div style="display: flex; align-items: center; gap: 0.75rem; font-size: 0.9rem; color: #f8fafc;"><span style="color:#10b981; font-weight: bold;">✔</span> Global Live Atmospheric Weather ⛅</div>
+          <div style="display: flex; align-items: center; gap: 0.75rem; font-size: 0.9rem; color: #f8fafc;"><span style="color:#10b981; font-weight: bold;">✔</span> 30-Day Historical Tracking Data 🕒</div>
+          <div style="display: flex; align-items: center; gap: 0.75rem; font-size: 0.9rem; color: #f8fafc;"><span style="color:#10b981; font-weight: bold;">✔</span> Priority Database Search Access 🔍</div>
+        </div>
+
+        <!-- STRIPE MOCK TRIGGER -->
+        <button onclick="document.getElementById('pro-promo-content').style.display='none'; document.getElementById('pro-checkout-content').style.display='block';" style="display: block; width: 100%; border: none; cursor: pointer; text-align: center; background: linear-gradient(to right, #3b82f6, #8b5cf6); color: white; padding: 1rem; border-radius: 12px; font-weight: 800; font-size: 1rem; transition: transform 0.2s, box-shadow 0.2s; box-shadow: 0 10px 25px -5px rgba(139,92,246,0.4);" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 15px 30px -5px rgba(139,92,246,0.6)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 10px 25px -5px rgba(139,92,246,0.4)'">
+          Subscribe for £1.99/mo (Secure Inline Checkout)
+        </button>
+        
+        <div style="text-align: center; font-size: 0.65rem; color: var(--text-muted); margin-top: 1rem; display: flex; align-items: center; justify-content: center; gap: 0.35rem;">
+          <span>🔒 External payments processed safely by</span> <strong style="color: #ffdd00; filter: drop-shadow(0 0 2px rgba(255,221,0,0.5));">Buy Me A Coffee</strong>
+        </div>
+      </div>
+
+      <!-- Native Mock Checkout UI -->
+      <div id="pro-checkout-content" style="display: none;">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem;">
+          <h2 style="font-size: 1.5rem; color: white; margin: 0; display: flex; align-items: center; gap: 0.5rem;"><span style="color:#60a5fa">💳</span> Secure Checkout</h2>
+          <div style="font-size: 0.8rem; background: rgba(59,130,246,0.1); color: #60a5fa; padding: 0.4rem 0.8rem; border-radius: 12px; font-weight: 800;">SkyPulse PRO · £1.99/mo</div>
+        </div>
+
+        <form id="checkout-form" onsubmit="event.preventDefault(); processMockPayment();" style="display: flex; flex-direction: column; gap: 1.25rem;">
+          
+          <div>
+            <label style="color: var(--text-muted); font-size: 0.75rem; font-weight: 700; margin-bottom: 0.5rem; display: block; letter-spacing: 0.5px;">CARDHOLDER NAME</label>
+            <input type="text" placeholder="John Doe" required style="width: 100%; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: white; padding: 1rem; border-radius: 12px; font-family: 'Inter', sans-serif; font-size: 0.95rem; outline: none; transition: border-color 0.2s; box-sizing: border-box;" onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+          </div>
+
+          <div>
+            <label style="color: var(--text-muted); font-size: 0.75rem; font-weight: 700; margin-bottom: 0.5rem; display: block; letter-spacing: 0.5px;">CARD NUMBER</label>
+            <div style="position: relative;">
+              <input type="text" placeholder="0000 0000 0000 0000" maxlength="19" required style="width: 100%; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: white; padding: 1rem; padding-left: 3rem; border-radius: 12px; font-family: monospace; font-size: 1.1rem; outline: none; transition: border-color 0.2s; box-sizing: border-box;" onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+              <span style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); font-size: 1.2rem;">🔒</span>
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 1.5rem;">
+            <div style="flex: 1;">
+              <label style="color: var(--text-muted); font-size: 0.75rem; font-weight: 700; margin-bottom: 0.5rem; display: block; letter-spacing: 0.5px;">EXPIRY DATE</label>
+              <input type="text" placeholder="MM/YY" maxlength="5" required style="width: 100%; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: white; padding: 1rem; border-radius: 12px; font-family: monospace; font-size: 1.1rem; text-align: center; outline: none; transition: border-color 0.2s; box-sizing: border-box;" onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+            </div>
+            <div style="flex: 1;">
+              <label style="color: var(--text-muted); font-size: 0.75rem; font-weight: 700; margin-bottom: 0.5rem; display: block; letter-spacing: 0.5px;">CVC / CVV</label>
+              <input type="text" placeholder="123" maxlength="4" required style="width: 100%; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: white; padding: 1rem; border-radius: 12px; font-family: monospace; font-size: 1.1rem; text-align: center; outline: none; transition: border-color 0.2s; box-sizing: border-box;" onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+            </div>
+          </div>
+
+          <button id="submit-payment-btn" type="submit" style="background: linear-gradient(to right, #10b981, #059669); color: white; border: none; padding: 1.2rem; border-radius: 12px; font-weight: 800; font-size: 1.1rem; cursor: pointer; margin-top: 1rem; transition: transform 0.2s, box-shadow 0.2s; box-shadow: 0 10px 25px rgba(16,185,129,0.3);" onmouseover="this.style.transform='translateY(-2px)';" onmouseout="this.style.transform='translateY(0)';">
+            Pay £1.99 &amp; Unlock PRO
+          </button>
+        </form>
+
+        <div style="text-align: center; margin-top: 1.5rem; font-size: 0.7rem; color: var(--text-muted); display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+          <span style="color: #10b981;">●</span> Payment explicitly bypassed. Clicking will successfully unlock PRO globally.
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Draggable Premium ATC Radio Widget -->
+  <div id="atc-widget" style="display: none; position: fixed; top: 150px; left: 350px; width: 320px; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid var(--primary); border-radius: 16px; box-shadow: 0 15px 50px rgba(0,0,0,0.8); z-index: 1000; color: white; font-family: 'Inter', sans-serif; overflow: hidden;">
+    <!-- Drag Handle Header -->
+    <div id="atc-widget-header" style="background: rgba(59, 130, 246, 0.2); padding: 0.6rem 1rem; cursor: grab; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(59, 130, 246, 0.3);">
+      <div style="font-size: 0.75rem; font-weight: 800; color: var(--primary); text-transform: uppercase; display: flex; align-items: center; gap: 0.4rem;">
+        <div style="width:6px; height:6px; background:#10b981; border-radius:50%; animation: pulse 1.5s infinite; box-shadow: 0 0 5px #10b981;"></div>
+        ATC Radio Receiver
+      </div>
+      <button onclick="toggleATC()" style="background: transparent; color: white; border: none; font-size: 1.2rem; cursor: pointer; opacity: 0.7; transition: 0.2s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.7">&times;</button>
+    </div>
+    <!-- Body -->
+    <div style="padding: 1.25rem; text-align: center;">
+      <div style="font-size: 0.9rem; font-weight: 700; margin-bottom: 0.25rem;">London Heathrow (EGLL)</div>
+      <div style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 1.5rem; background: rgba(0,0,0,0.3); padding: 0.3rem; border-radius: 4px; display: inline-block;">Tower Freq: 118.500 MHz</div>
+      <!-- Audio System -->
+      <audio id="atc-audio" preload="none" src="https://s1-fmt2.liveatc.net/egll_twr_del"></audio>
+      <button id="atc-play-btn" onclick="toggleATCPlayback()" style="background: linear-gradient(to right, #10b981, #059669); color: white; border: none; border-radius: 50%; width: 55px; height: 55px; font-size: 1.3rem; cursor: pointer; box-shadow: 0 4px 15px rgba(16,185,129,0.4); display: flex; align-items: center; justify-content: center; margin: 0 auto; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+        ▶
+      </button>
+      <div id="atc-status" style="margin-top: 1.25rem; font-size: 0.65rem; color: var(--text-muted); font-family: monospace; letter-spacing: 0.05em;">STREAM OFFLINE</div>
+    </div>
+  </div>
+
+  <script>
+    function processMockPayment() {
+      const btn = document.getElementById('submit-payment-btn');
+      btn.innerHTML = `<div style="display:inline-block; width:18px; height:18px; border:3px solid rgba(255,255,255,0.3); border-top-color: white; border-radius:50%; animation:spin 1s linear infinite; margin-right:0.6rem; vertical-align:text-bottom;"></div> Processing Secure Terminal...`;
+      btn.style.pointerEvents = 'none';
+      btn.style.opacity = '0.8';
+
+      setTimeout(() => {
+        btn.innerHTML = `✅ Payment Approved! Upgrading Tier...`;
+        btn.style.background = '#10b981';
+        btn.style.opacity = '1';
+        
+        setTimeout(() => {
+          localStorage.setItem('skypulse_pro', 'true');
+          location.reload();
+        }, 1500);
+      }, 2500); // 2.5 second mock API delay to build tension/realism
+    }
+
+    // System Auth Controller
+    document.addEventListener('DOMContentLoaded', () => {
+      // Check if user is already legally authenticated
+      if (localStorage.getItem('skypulse_user_session') === 'active') {
+        document.getElementById('auth-portal').style.display = 'none';
+      }
+    });
+
+    function processLogin(provider) {
+      const spinner = document.getElementById('auth-spinner');
+      const statusText = document.getElementById('auth-status-text');
+      spinner.style.display = 'flex';
+      
+      statusText.innerText = `Establishing token with ${provider}...`;
+      
+      setTimeout(() => {
+        statusText.innerText = 'Verifying O-Auth credentials...';
+        statusText.style.color = '#10b981';
+        
+        setTimeout(() => {
+          statusText.innerText = 'Platform Access Granted!';
+          localStorage.setItem('skypulse_user_session', 'active');
+          
+          // Execute beautiful cross-fade into main platform
+          const portal = document.getElementById('auth-portal');
+          portal.style.opacity = '0';
+          setTimeout(() => {
+            portal.style.display = 'none';
+          }, 600);
+        }, 1200);
+      }, 1500);
+    }
+    
+    function logout() {
+      localStorage.removeItem('skypulse_user_session');
+      location.reload(); // Hard boot to kick to login portal natively
+    }
+
+    // Module Launch Initializer
+    function launchModule(action) {
+      const splash = document.getElementById('welcome-splash');
+      splash.style.opacity = '0';
+      setTimeout(() => { splash.style.display = 'none'; }, 500);
+
+      const tabBtns = document.querySelectorAll('.tab-btn');
+      const sidebar = document.querySelector('.sidebar');
+      const floatBtn = document.getElementById('floating-menu-btn');
+      const searchHud = document.getElementById('search-hud');
+
+      if (action === 'radar') {
+        // Go 100% Full Screen Immersive Array
+        sidebar.style.display = 'none';
+        
+        // Reset Sidebar Position (in case they return to Radar)
+        sidebar.style.position = 'relative';
+        sidebar.style.left = '0';
+        sidebar.style.top = '0';
+        sidebar.style.transform = 'none';
+        sidebar.style.height = '100vh';
+        sidebar.style.width = 'var(--panel-width)';
+        sidebar.style.borderRadius = '0';
+        sidebar.style.borderRight = '1px solid rgba(255, 255, 255, 0.05)';
+        
+        floatBtn.style.display = 'flex';
+        document.getElementById('map-frame').style.display = 'block';
+        if(document.getElementById('travel-hero')) document.getElementById('travel-hero').style.display = 'none';
+        if(searchHud) { searchHud.style.display = 'flex'; searchHud.style.left = '50%'; }
+      } else {
+        // Centered Glass Deals View
+        sidebar.style.display = 'flex';
+        sidebar.style.position = 'absolute';
+        sidebar.style.left = '50%';
+        sidebar.style.top = '50%';
+        sidebar.style.transform = 'translate(-50%, -50%)';
+        sidebar.style.height = '85vh';
+        sidebar.style.width = '700px'; // Drastically widen the Deals pane
+        sidebar.style.borderRadius = '24px';
+        sidebar.style.border = '1px solid rgba(255,255,255,0.1)';
+        sidebar.style.boxShadow = '0 30px 60px rgba(0,0,0,0.9)';
+        
+        floatBtn.style.display = 'flex'; // Allow them to return to Main Menu from Deals
+        document.getElementById('map-frame').style.display = 'none'; // Hide Radar Map
+        
+        const hero = document.getElementById('travel-hero');
+        if(hero) hero.style.display = 'block';
+        if(searchHud) searchHud.style.display = 'none'; // Hide Radar Search Bar
+        
+        switchTab('deals', tabBtns[0]);
+
+        if (action === 'deals') {
+          document.getElementById('deals-header').innerHTML = `<div style="width: 8px; height: 8px; background: #ef4444; border-radius: 50%; box-shadow: 0 0 5px #ef4444; animation: pulse 1s infinite;"></div> ⏱️ Last Minute Deals`;
+          if(hero) {
+            hero.style.backgroundImage = "url('https://images.unsplash.com/photo-1436491865332-7a61a109cc05?q=80&w=2000&auto=format&fit=crop')";
+            document.getElementById('travel-hero-title').innerText = "Departure";
+            document.getElementById('travel-hero-sub').innerText = "Live Airport Clearances";
+          }
+          dealsMode = 'current';
+        } else if (action === 'weekly') {
+          document.getElementById('deals-header').innerHTML = `<div style="width: 8px; height: 8px; background: #f59e0b; border-radius: 50%; box-shadow: 0 0 5px #f59e0b; animation: pulse 1s infinite;"></div> 🌟 Deals of the Week`;
+          if(hero) {
+            hero.style.backgroundImage = "url('https://images.unsplash.com/photo-1499793983690-e29da59ef1c2?q=80&w=2000&auto=format&fit=crop')";
+            document.getElementById('travel-hero-title').innerText = "Maldives";
+            document.getElementById('travel-hero-sub').innerText = "Featured Destination of the Week";
+          }
+          dealsMode = 'weekly';
+        } else if (action === 'future') {
+          document.getElementById('deals-header').innerHTML = `<div style="width: 8px; height: 8px; background: #10b981; border-radius: 50%; box-shadow: 0 0 5px #10b981; animation: pulse 1s infinite;"></div> 📆 Next Month Escapes`;
+          if(hero) {
+            hero.style.backgroundImage = "url('https://images.unsplash.com/photo-1514565131-fce0801e5785?q=80&w=2000&auto=format&fit=crop')";
+            document.getElementById('travel-hero-title').innerText = "Paris";
+            document.getElementById('travel-hero-sub').innerText = "Book Ahead & Save";
+          }
+          dealsMode = 'future';
+        }
+        
+        renderDeals();
+      }
+
+      // Update Pills if they exist in DOM
+      if(document.getElementById('pill-current')) {
+        document.getElementById('pill-current').style.background = dealsMode==='current' ? 'var(--primary)' : 'transparent';
+        document.getElementById('pill-current').style.color = dealsMode==='current' ? 'white' : 'var(--text-muted)';
+        document.getElementById('pill-weekly').style.background = dealsMode==='weekly' ? '#f59e0b' : 'transparent';
+        document.getElementById('pill-weekly').style.color = dealsMode==='weekly' ? 'white' : 'var(--text-muted)';
+        document.getElementById('pill-future').style.background = dealsMode==='future' ? '#10b981' : 'transparent';
+        document.getElementById('pill-future').style.color = dealsMode==='future' ? 'white' : 'var(--text-muted)';
+      }
+    }
+
+    // Paywall Guard Logic
+    function isPro() {
+      return localStorage.getItem('skypulse_pro') === 'true';
+    }
+
+    function showPaywall() {
+      const modalBox = document.getElementById('pro-modal-box');
+      document.getElementById('pro-promo-content').style.display = 'block';
+      modalBox.style.width = '400px';
+      modalBox.style.padding = '2.5rem';
+      document.getElementById('pro-modal').style.display = 'flex';
+    }
+
+    // Map Filter Routing Logic
+    function setMapFilter(type, btn) {
+      document.querySelectorAll('.hud-filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      
+      const frame = document.getElementById('map-frame');
+      
+      if (type === 'all') {
+        frame.src = "https://globe.adsbexchange.com/?zoom=9&lat=51.47&lon=-0.45&hideSidebar=1&map=esri";
+      } else if (type === 'mil') {
+        frame.src = "https://globe.adsbexchange.com/?zoom=9&lat=51.47&lon=-0.45&hideSidebar=1&map=esri&filterDb=mil";
+      } else if (type === 'com') {
+        // FlightRadar24 strictly blocks iframe embedding via corporate firewalls. Re-routing gracefully to ADSB.fi for Commercial fallback.
+        frame.src = "https://globe.adsb.fi/?zoom=9&lat=51.47&lon=-0.45&hideSidebar=1&map=esri";
+      } else if (type === 'wx') {
+        frame.src = "https://embed.windy.com/embed.html?type=map&location=coordinates&metricRain=mm&metricTemp=°C&metricWind=kt&zoom=8&lat=51.47&lon=-0.45&detailLat=51.47&detailLon=-0.45&marker=true&message=true";
+      }
+    }
+
+    // ATC Radio System
+    let isPlayingATC = false;
+    function toggleATC() {
+      const widget = document.getElementById('atc-widget');
+      if (widget.style.display === 'none' || !widget.style.display) {
+        widget.style.display = 'block';
+      } else {
+        widget.style.display = 'none';
+        document.getElementById('atc-audio').pause();
+        isPlayingATC = false;
+        document.getElementById('atc-play-btn').innerHTML = '▶';
+        document.getElementById('atc-status').innerText = 'STREAM OFFLINE';
+        document.getElementById('atc-status').style.color = 'var(--text-muted)';
+      }
+    }
+
+    function toggleATCPlayback() {
+      if (!isPro()) {
+        showPaywall();
+        return;
+      }
+      
+      const audio = document.getElementById('atc-audio');
+      const btn = document.getElementById('atc-play-btn');
+      const statusTxt = document.getElementById('atc-status');
+      if (isPlayingATC) {
+        audio.pause();
+        isPlayingATC = false;
+        btn.innerHTML = '▶';
+        statusTxt.innerText = 'STREAM PAUSED';
+        statusTxt.style.color = 'var(--warning)';
+      } else {
+        audio.volume = 1.0;
+        audio.play().catch(e => { console.error(e); statusTxt.innerText = 'CONNECTION FAILED'; });
+        isPlayingATC = true;
+        btn.innerHTML = '⏸';
+        statusTxt.innerText = 'RECEIVING LIVE AUDIO...';
+        statusTxt.style.color = '#10b981';
+      }
+    }
+
+    // Draggable Logic
+    dragElement(document.getElementById("atc-widget"));
+    function dragElement(elmnt) {
+      if(!elmnt) return;
+      var pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+      if (document.getElementById(elmnt.id + "-header")) {
+        document.getElementById(elmnt.id + "-header").onmousedown = dragMouseDown;
+      } else {
+        elmnt.onmousedown = dragMouseDown;
+      }
+      function dragMouseDown(e) {
+        e = e || window.event; e.preventDefault();
+        pos3 = e.clientX; pos4 = e.clientY;
+        document.onmouseup = closeDragElement;
+        document.onmousemove = elementDrag;
+      }
+      function elementDrag(e) {
+        e = e || window.event; e.preventDefault();
+        pos1 = pos3 - e.clientX; pos2 = pos4 - e.clientY;
+        pos3 = e.clientX; pos4 = e.clientY;
+        elmnt.style.top = (elmnt.offsetTop - pos2) + "px";
+        elmnt.style.left = (elmnt.offsetLeft - pos1) + "px";
+      }
+      function closeDragElement() {
+        document.onmouseup = null; document.onmousemove = null;
+      }
+    }
+
+    // Search Bar Logic
+    function handleSearch(event) {
+      if (event.key === 'Enter') {
+        const query = event.target.value.trim().toUpperCase();
+        if (!query) return;
+        
+        const parent = event.target.parentElement;
+        parent.style.borderColor = '#10b981'; // flash green to confirm
+        setTimeout(() => { parent.style.borderColor = 'rgba(255,255,255,0.15)'; }, 500);
+
+        let url = 'https://globe.adsbexchange.com/?hideSidebar=1';
+        
+        // 4-digit Squawk match (e.g., 7700)
+        if (/^\d{4}$/.test(query)) {
+          url += '&squawk=' + query;
+        } 
+        // UK/Global Airports Zoom map target
+        else if (query === 'LHR' || query === 'EGLL') { url += '&zoom=13&lat=51.4700&lon=-0.4543'; }
+        else if (query === 'LGW' || query === 'EGKK') { url += '&zoom=13&lat=51.1481&lon=-0.1903'; }
+        else if (query === 'MAN' || query === 'EGCC') { url += '&zoom=13&lat=53.3533&lon=-2.2750'; }
+        else if (query === 'JFK' || query === 'KJFK') { url += '&zoom=13&lat=40.6413&lon=-73.7781'; }
+        else if (query === 'DXB' || query === 'OMDB') { url += '&zoom=13&lat=25.2532&lon=55.3657'; }
+        // Exact Hex match
+        else if (/^[A-F0-9]{6}$/i.test(query)) { url += '&icao=' + query; }
+        // General Flight/Callsign
+        else { url += '&callsign=' + query; }
+        
+        document.getElementById('map-frame').src = url;
+        event.target.blur(); // dismiss keyboard
+      }
+    }
+
+    // Live Fleet Telemetry System
+    const fleetAircraft = [
+      { call: "BA12", type: "B77W", alt: "34,000", spd: "482" },
+      { call: "VIR4", type: "A351", alt: "38,000", spd: "495" },
+      { call: "EZY84", type: "A320", alt: "12,400", spd: "310", highlight: true },
+      { call: "RYR1Z", type: "B738", alt: "28,000", spd: "420" },
+      { call: "QFA1", type: "A388", alt: "36,000", spd: "510" },
+      { call: "UAE2", type: "A388", alt: "39,000", spd: "505" },
+      { call: "DLH4A", type: "A320", alt: "18,000", spd: "380" },
+      { call: "AFR22", type: "B789", alt: "35,000", spd: "490" }
+    ];
+
+    function renderFleet() {
+      const container = document.getElementById('fleet-list');
+      if (!container) return;
+      
+      const shuffled = [...fleetAircraft].sort(() => 0.5 - Math.random()).slice(0, 4);
+      let html = '';
+      shuffled.forEach(p => {
+        const altFluctuate = parseInt(p.alt.replace(',','')) + Math.floor(Math.random() * 50 - 25);
+        const spdFluctuate = parseInt(p.spd) + Math.floor(Math.random() * 6 - 3);
+        const isFocus = p.highlight && Math.random() > 0.5;
+        
+        html += `
+        <div onclick="inspectFlight('${p.call}', '${p.type}', ${spdFluctuate}, ${altFluctuate})" style="display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.03); border-radius: 8px; padding: 0.6rem 0.75rem; border-left: 2px solid ${isFocus ? '#10b981' : 'rgba(255,255,255,0.1)'}; transition: background 0.2s; cursor: pointer;" onmouseover="this.style.background='rgba(59,130,246,0.15)'" onmouseout="this.style.background='rgba(255,255,255,0.03)'">
+          <div style="display: flex; flex-direction: column; gap: 0.2rem;">
+            <div style="font-size: 0.85rem; font-weight: 800; font-family: monospace; color: ${isFocus ? '#10b981' : 'white'};">✈ ${p.call}</div>
+            <div style="font-size: 0.6rem; color: var(--text-muted); font-weight: 600;">${p.type}</div>
+          </div>
+          <div style="text-align: right; display: flex; flex-direction: column; gap: 0.2rem;">
+            <div style="font-size: 0.8rem; font-family: monospace; color: var(--primary); font-weight: bold;">${altFluctuate.toLocaleString()} FT</div>
+            <div style="font-size: 0.65rem; color: var(--text-muted);">${spdFluctuate} KTS</div>
+          </div>
+        </div>`;
+      });
+      container.innerHTML = html;
+    }
+
+    // Live Deals Engine Simulator
+    const lastMinuteDealsEngine = [
+      { from: "LHR", fromName: "London Heathrow", to: "DXB", toName: "Dubai Int'l", airline: "Emirates", oldPrice: 649, minPrice: 250, hours: 14, seats: 3 },
+      { from: "MAN", fromName: "Manchester", to: "JFK", toName: "New York JFK", airline: "Virgin Atlantic", oldPrice: 480, minPrice: 280, hours: 22, seats: 8 },
+      { from: "LGW", fromName: "London Gatwick", to: "BCN", toName: "Barcelona", airline: "easyJet", oldPrice: 150, minPrice: 29, hours: 6, seats: 2 },
+      { from: "EDI", fromName: "Edinburgh", to: "CDG", toName: "Paris", airline: "Air France", oldPrice: 220, minPrice: 45, hours: 9, seats: 5 },
+      { from: "LHR", fromName: "London Heathrow", to: "MIA", toName: "Miami", airline: "British Airways", oldPrice: 750, minPrice: 310, hours: 18, seats: 4 },
+      { from: "BHX", fromName: "Birmingham", to: "AMS", toName: "Amsterdam", airline: "KLM", oldPrice: 130, minPrice: 35, hours: 4, seats: 1 }
+    ];
+
+    let dealsMode = 'current';
+
+    function renderDeals() {
+      const container = document.getElementById('live-deals-container');
+      if (!container) return;
+      container.style.opacity = 0;
+      
+      setTimeout(() => {
+        const mixed = [...lastMinuteDealsEngine].sort(() => 0.5 - Math.random());
+        const picked = mixed.slice(0, 2);
+        
+        let html = '';
+        picked.forEach(deal => {
+          let currentPrice = deal.minPrice + Math.floor(Math.random() * 50); // slight price flux
+          let hoursOffset = deal.hours;
+          
+          if (dealsMode === 'future') {
+            hoursOffset += 720;
+            currentPrice = Math.max(15, currentPrice - 20);
+          } else if (dealsMode === 'weekly') {
+            hoursOffset += (24 * (Math.floor(Math.random() * 5) + 2)); // 48 to 168 hours (+2 to +7 Days)
+            currentPrice = Math.max(15, currentPrice - 10);
+          }
+
+          const seats = Math.max(1, deal.seats - Math.floor(Math.random() * 2));
+          let color = seats <= 3 ? 'var(--danger)' : 'var(--warning)';
+          if(dealsMode === 'weekly') color = '#f59e0b';
+          if(dealsMode === 'future') color = '#10b981';
+          
+          // Exact Date Calculation for Skyscanner & UI Match
+          const exactDate = new Date();
+          exactDate.setHours(exactDate.getHours() + hoursOffset);
+          const yy = exactDate.getFullYear().toString().slice(-2);
+          const mm = String(exactDate.getMonth() + 1).padStart(2, '0');
+          const dd = String(exactDate.getDate()).padStart(2, '0');
+          const skyscannerDate = yy + mm + dd; // formats into 260323
+          const uiDate = exactDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+          
+          const skyscannerUrl = `https://www.skyscanner.net/transport/flights/${deal.from.toLowerCase()}/${deal.to.toLowerCase()}/${skyscannerDate}/`;
+          
+          html += `
+          <a href="${skyscannerUrl}" target="_blank" class="deal-card" style="display: block; text-decoration: none; color: inherit; transition: transform 0.2s, border-color 0.2s; cursor: pointer;" onmouseover="this.style.transform='translateY(-3px)'; this.style.borderColor='#0770e3';" onmouseout="this.style.transform='translateY(0)'; this.style.borderColor='rgba(239, 68, 68, 0.3)';">
+            <div class="deal-badge" style="background: ${color};">${uiDate.toUpperCase()} · IN ${hoursOffset}H</div>
+            <div class="route" style="margin-bottom: 0.25rem;">
+              <div class="airport" style="font-size:1.25rem;">${deal.from}<small>${deal.fromName}</small></div>
+              <div class="plane-icon" style="color:var(--text); font-size:1.2rem;">✈</div>
+              <div class="airport" style="text-align:right; font-size:1.25rem;">${deal.to}<small>${deal.toName}</small></div>
+            </div>
+            <div class="airline">✈️ ${deal.airline} · Exact Date Selected</div>
+            <div class="flight-meta" style="margin-top:0.75rem;">
+              <div class="seats-left" style="color:${color}"><div class="seats-dot" style="background:${color}"></div> Only ${seats} seats left!</div>
+              <div class="price discount" style="font-size:1.3rem;"><span class="price-strike">£${deal.oldPrice}</span> £${currentPrice}</div>
+            </div>
+            
+            <div style="margin-top: 1rem; background: rgba(7, 112, 227, 0.15); border: 1px solid rgba(7, 112, 227, 0.3); border-radius: 6px; padding: 0.4rem; text-align: center; color: #60a5fa; font-size: 0.75rem; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 0.4rem;">
+              Checkout ${uiDate} on Skyscanner <span>↗</span>
+            </div>
+          </a>`;
+        });
+        
+        container.innerHTML = html;
+        container.style.opacity = 1;
+      }, 300);
+    }
+
+    // FlightRadar24 Inspector Panel Engine
+    function inspectFlight(callsign, type, speed, alt) {
+      if(!isPro()) {
+        showPaywall();
+        return;
+      }
+      
+      document.getElementById('insp-callsign').innerText = callsign;
+      document.getElementById('insp-type').innerText = "Commercial · Aircraft " + type;
+      document.getElementById('insp-alt').innerText = alt.toLocaleString() + " ft";
+      document.getElementById('insp-speed').innerText = speed.toLocaleString() + " kts";
+      
+      // Randomize route logic for FlightRadar realism
+      const hubs = ["LHR", "JFK", "DXB", "FRA", "CDG", "AMS", "SIN", "HKG", "LAX", "SYD"];
+      let origin = hubs[Math.floor(Math.random() * hubs.length)];
+      let dest = hubs[Math.floor(Math.random() * hubs.length)];
+      while(dest === origin) dest = hubs[Math.floor(Math.random() * hubs.length)];
+      
+      document.getElementById('insp-origin').innerText = origin;
+      document.getElementById('insp-dest').innerText = dest;
+
+      // Animate inspector panel sliding in from the left over the map
+      document.getElementById('fr24-inspector').style.transform = 'translateX(0)';
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      // Start Deals Engine Polling
+      renderDeals();
+      setInterval(renderDeals, 7000); // refresh every 7 seconds
+      
+      // Start Fleet Telemetry Polling
+      if(typeof renderFleet === "function") {
+        renderFleet();
+        setInterval(renderFleet, 2500); // rapid 2.5sec refresh
+      }
+    });
+    function switchTab(tabId, btn) {
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById(`tab-${tabId}`).classList.add('active');
+      btn.classList.add('active');
+    }
+
+    function changeMapSource() { document.getElementById('map-frame').src = document.getElementById('mapSource').value; }
+
+    const FLAGS = [
+      { id: "weather_overlay", enabled: true, rolloutPercentage: 60, environments: ["prod", "staging", "dev"] },
+      { id: "flight_history", enabled: true, rolloutPercentage: 40, environments: ["prod", "staging", "dev"] },
+      { id: "airline_comparison", enabled: true, rolloutPercentage: 15, environments: ["prod", "staging", "dev"] },
+      { id: "price_tracker", enabled: true, rolloutPercentage: 100, environments: ["prod"] }
+    ];
+
+    class FeatureFlagManager {
+      constructor(env) { this.env = env; this.flags = new Map(FLAGS.map(f => [f.id, { ...f }])); }
+      hashUser(userId, flagId) {
+        if (!userId) return Math.floor(Math.random() * 100);
+        let hash = 2166136261;
+        for (let i = 0; i < (userId+flagId).length; i++) {
+          hash ^= (userId+flagId).charCodeAt(i);
+          hash = Math.imul(hash, 16777619) >>> 0;
+        }
+        return hash;
+      }
+      isEnabled(flagId, userId) {
+        const flag = this.flags.get(flagId);
+        if (!flag || !flag.enabled || !flag.environments.includes(this.env)) return false;
+        if (flag.rolloutPercentage >= 100) return true;
+        if (flag.rolloutPercentage <= 0) return false;
+        if (userId) return (this.hashUser(userId, flagId) % 100) < flag.rolloutPercentage;
+        return Math.random() * 100 < flag.rolloutPercentage;
+      }
+    }
+
+    const flags = new FeatureFlagManager("prod");
+
+    function evaluateFlags() {
+      const userId = document.getElementById('userId').value;
+      ["weather_overlay", "flight_history", "airline_comparison", "price_tracker"].forEach(modId => {
+        const el = document.getElementById(`module-${modId}`);
+        if(el) el.classList.toggle('active', flags.isEnabled(modId, userId));
+      });
+    }
+    evaluateFlags();
+  </script>
+</body>
+</html>

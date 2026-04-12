@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SkyPulse - The Future of Flight Tracking</title>
+  <style>
+    :root {
+      --bg: #0b1120;
+      --text: #f8fafc;
+      --primary: #00e5ff;
+      --secondary: #0a2540;
+      --glass: rgba(255, 255, 255, 0.05);
+      --glass-border: rgba(255, 255, 255, 0.1);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    .ambient-glow {
+      position: absolute; width: 600px; height: 600px;
+      background: radial-gradient(circle, rgba(0, 229, 255, 0.15) 0%, transparent 70%);
+      top: -100px; left: 50%; transform: translateX(-50%); z-index: -1; pointer-events: none;
+    }
+
+    nav {
+      display: flex; justify-content: space-between; align-items: center; padding: 1.5rem 5%;
+      background: rgba(11, 17, 32, 0.8); backdrop-filter: blur(12px); position: sticky; top: 0; z-index: 100;
+      border-bottom: 1px solid var(--glass-border);
+    }
+
+    .logo-container { display: flex; align-items: center; gap: 1rem; }
+    .logo { height: 48px; border-radius: 8px; }
+    .logo-text { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.05em; }
+    .nav-links a { color: var(--text); text-decoration: none; margin-left: 2rem; font-size: 0.9rem; font-weight: 500; transition: color 0.3s; }
+    .nav-links a:hover { color: var(--primary); }
+
+    .btn-primary {
+      background: var(--primary); color: var(--secondary); padding: 0.75rem 1.5rem; border-radius: 999px;
+      text-decoration: none; font-weight: 700; font-size: 0.95rem; transition: transform 0.2s, box-shadow 0.2s; border: none; cursor: pointer;
+    }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(0, 229, 255, 0.3); }
+
+    .hero { text-align: center; padding: 6rem 1rem; max-width: 900px; margin: 0 auto; }
+    .hero-badge { display: inline-block; background: var(--glass); border: 1px solid var(--glass-border); padding: 0.5rem 1rem; border-radius: 999px; font-size: 0.85rem; font-weight: 600; color: var(--primary); margin-bottom: 1.5rem; animation: pulse 2s infinite; }
+    
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(0, 229, 255, 0.4); }
+      70% { box-shadow: 0 0 0 10px rgba(0, 229, 255, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(0, 229, 255, 0); }
+    }
+
+    .hero h1 {
+      font-size: 4.5rem; font-weight: 800; line-height: 1.1; margin-bottom: 1.5rem; letter-spacing: -0.05em;
+      background: linear-gradient(135deg, #fff 0%, #94a3b8 100%);
+      background-clip: text;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .hero p { font-size: 1.25rem; color: var(--text-muted); margin-bottom: 2.5rem; max-width: 600px; margin-inline: auto; }
+
+    .features { padding: 5rem 5%; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem; max-width: 1200px; margin: 0 auto; }
+    .feature-card { background: var(--glass); border: 1px solid var(--glass-border); border-radius: 20px; padding: 2.5rem; transition: transform 0.3s; }
+    .feature-card:hover { transform: translateY(-5px); border-color: rgba(0, 229, 255, 0.3); }
+    .feature-icon { width: 50px; height: 50px; background: rgba(0, 229, 255, 0.1); color: var(--primary); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; margin-bottom: 1.5rem; }
+    .feature-card h3 { font-size: 1.5rem; margin-bottom: 1rem; }
+    .feature-card p { color: var(--text-muted); font-size: 0.95rem; margin-bottom: 1.5rem; }
+    .booking-links { display: flex; gap: 0.5rem; }
+    .book-btn { background: rgba(255,255,255,0.1); color: white; padding: 0.5rem 1rem; border-radius: 6px; text-decoration: none; font-size: 0.8rem; transition: background 0.2s; }
+    .book-btn:hover { background: rgba(255,255,255,0.2); }
+
+    .chatbot-btn {
+      position: fixed; bottom: 30px; right: 30px; width: 60px; height: 60px; background: var(--primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; box-shadow: 0 10px 25px rgba(0, 229, 255, 0.4); cursor: pointer; z-index: 1000; transition: transform 0.3s;
+    }
+    .chatbot-btn:hover { transform: scale(1.1); }
+    .chat-window { position: fixed; bottom: 110px; right: 30px; width: 350px; height: 500px; background: var(--secondary); border: 1px solid var(--glass-border); border-radius: 16px; box-shadow: 0 20px 40px rgba(0,0,0,0.5); display: flex; flex-direction: column; transform: translateY(20px); opacity: 0; pointer-events: none; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); z-index: 999; overflow: hidden; }
+    .chat-window.open { transform: translateY(0); opacity: 1; pointer-events: auto; }
+    .chat-header { background: rgba(255, 255, 255, 0.05); padding: 1rem 1.5rem; border-bottom: 1px solid var(--glass-border); display: flex; align-items: center; gap: 0.75rem; }
+    .status-dot { width: 10px; height: 10px; background: #10b981; border-radius: 50%; }
+    .chat-body { flex: 1; padding: 1.5rem; overflow-y: auto; display: flex; flex-direction: column; gap: 1rem; }
+    .msg { max-width: 80%; padding: 0.75rem 1rem; border-radius: 12px; font-size: 0.9rem; line-height: 1.4; }
+    .msg.bot { background: rgba(255, 255, 255, 0.1); align-self: flex-start; border-bottom-left-radius: 2px; }
+    .msg.user { background: var(--primary); color: var(--secondary); align-self: flex-end; border-bottom-right-radius: 2px; font-weight: 500; }
+    .chat-input { padding: 1rem; border-top: 1px solid var(--glass-border); display: flex; gap: 0.5rem; }
+    .chat-input input { flex: 1; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); color: white; padding: 0.75rem; border-radius: 8px; outline: none; }
+    .chat-input input:focus { border-color: var(--primary); }
+
+  </style>
+</head>
+<body>
+
+  <div class="ambient-glow"></div>
+
+  <nav>
+    <div class="logo-container">
+      <img src="file:///Users/adnanriaz/.gemini/antigravity/brain/6d3a8966-d59a-484c-8c8d-edda4add5cf8/skypulse_logo_1774134736582.png" alt="SkyPulse Logo" class="logo" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'><rect width=\'100\' height=\'100\' fill=\'#00e5ff\'/><text x=\'50\' y=\'55\' text-anchor=\'middle\' fill=\'#0a2540\' font-weight=\'bold\' font-family=\'sans-serif\' font-size=\'20\'>SP</text></svg>'">
+      <span class="logo-text">SkyPulse</span>
+    </div>
+    <div class="nav-links">
+      <a href="#live-deals">Last Minute Deals</a>
+      <a href="#radar">Live Radar</a>
+      <a href="dashboard.html" class="btn-primary" style="margin-left: 2rem;">Launch App</a>
+    </div>
+  </nav>
+
+  <section class="hero">
+    <div class="hero-badge">Pulse Engine v2.0 Live</div>
+    <h1>The sky, decoded.</h1>
+    <p>Track flights globally in real-time, predict delays with meteorological data, and instantly snag last-minute deals when airlines dump unused seats.</p>
+    <div style="display: flex; justify-content: center; gap: 1rem;">
+      <a href="#live-deals" class="btn-primary" style="padding: 1rem 2rem; font-size: 1.1rem; box-shadow: 0 0 20px rgba(239, 68, 68, 0.4); background: #ef4444; color: white;">🔥 Snag Last Seats</a>
+      <a href="dashboard.html" style="padding: 1rem 2rem; color: var(--text); text-decoration: none; border-radius: 999px; border: 1px solid var(--glass-border); transition: background 0.2s;">Launch Dashboard</a>
+    </div>
+  </section>
+
+  <!-- UNIQUE SELLING POINT & LIVE DEALS SECTION -->
+  <section id="live-deals" style="padding: 5rem 5%; max-width: 1200px; margin: 0 auto;">
+    <div style="text-align: center; margin-bottom: 3rem;">
+      <h2 style="font-size: 2.5rem; font-weight: 800; margin-bottom: 1rem; color: white;">The "Empty Seat" Arbitrage</h2>
+      <p style="color: var(--text-muted); font-size: 1.1rem; max-width: 700px; margin: 0 auto;">
+        Airlines lose thousands of dollars on flights taking off with empty seats. 
+        <strong>SkyPulse’s Distress Radar</strong> instantly exposes these final <span style="color:#ef4444; font-weight:bold;">1–5 remaining seats</span> within 24 hours of departure, allowing you to book direct flights from UK airports at up to 80% off.
+      </p>
+    </div>
+
+    <!-- Deal Cards Container -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem;">
+      
+      <!-- Deal 1 -->
+      <a href="https://www.skyscanner.net/transport/flights/lhr/dxb" target="_blank" style="text-decoration: none; color: inherit; display: block; background: linear-gradient(145deg, rgba(239, 68, 68, 0.15) 0%, rgba(255, 255, 255, 0.02) 100%); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 12px; padding: 1.5rem; position: relative; overflow: hidden; transition: transform 0.2s; cursor: pointer;" onmouseover="this.style.transform='translateY(-5px)'; this.style.borderColor='rgba(239, 68, 68, 0.6)'" onmouseout="this.style.transform='translateY(0)'; this.style.borderColor='rgba(239, 68, 68, 0.3)'">
+        <div style="position: absolute; top: 0; right: 0; background: #ef4444; color: white; font-size: 0.7rem; font-weight: bold; padding: 0.25rem 0.75rem; border-bottom-left-radius: 8px;">DEPARTS IN 14H</div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+          <div style="font-size: 1.5rem; font-weight: 800;">LHR<span style="display:block; font-size:0.75rem; color: #94a3b8; font-weight: 500;">London</span></div>
+          <div style="color: #00e5ff; font-size: 1.5rem;">✈</div>
+          <div style="font-size: 1.5rem; font-weight: 800; text-align: right;">DXB<span style="display:block; font-size:0.75rem; color: #94a3b8; font-weight: 500;">Dubai</span></div>
+        </div>
+        <div style="color: #94a3b8; font-size: 0.85rem; margin-bottom: 1rem;">✈️ Emirates · EK2</div>
+        <div style="display: flex; justify-content: space-between; align-items: flex-end; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 1rem;">
+          <div style="color: #ef4444; font-weight: 600; font-size: 0.9rem; display: flex; align-items: center; gap: 0.4rem;">
+            <div style="width: 8px; height: 8px; background: #ef4444; border-radius: 50%; box-shadow: 0 0 10px #ef4444;"></div>
+            3 seats left!
+          </div>
+          <div style="font-size: 1.8rem; font-weight: 800; color: #10b981;"><span style="text-decoration:line-through; color:#94a3b8; font-size:1rem; margin-right:0.5rem;">£649</span>£299</div>
+        </div>
+      </a>
+
+      <!-- Deal 2 -->
+      <a href="https://www.skyscanner.net/transport/flights/lgw/jfk" target="_blank" style="text-decoration: none; color: inherit; display: block; background: linear-gradient(145deg, rgba(245, 158, 11, 0.15) 0%, rgba(255, 255, 255, 0.02) 100%); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 12px; padding: 1.5rem; position: relative; overflow: hidden; transition: transform 0.2s; cursor: pointer;" onmouseover="this.style.transform='translateY(-5px)'; this.style.borderColor='rgba(245, 158, 11, 0.6)'" onmouseout="this.style.transform='translateY(0)'; this.style.borderColor='rgba(245, 158, 11, 0.3)'">
+        <div style="position: absolute; top: 0; right: 0; background: #f59e0b; color: white; font-size: 0.7rem; font-weight: bold; padding: 0.25rem 0.75rem; border-bottom-left-radius: 8px;">DEPARTS IN 8H</div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+          <div style="font-size: 1.5rem; font-weight: 800;">LGW<span style="display:block; font-size:0.75rem; color: #94a3b8; font-weight: 500;">London</span></div>
+          <div style="color: #00e5ff; font-size: 1.5rem;">✈</div>
+          <div style="font-size: 1.5rem; font-weight: 800; text-align: right;">JFK<span style="display:block; font-size:0.75rem; color: #94a3b8; font-weight: 500;">New York</span></div>
+        </div>
+        <div style="color: #94a3b8; font-size: 0.85rem; margin-bottom: 1rem;">✈️ Virgin Atl. · VS127</div>
+        <div style="display: flex; justify-content: space-between; align-items: flex-end; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 1rem;">
+          <div style="color: #f59e0b; font-weight: 600; font-size: 0.9rem; display: flex; align-items: center; gap: 0.4rem;">
+            <div style="width: 8px; height: 8px; background: #f59e0b; border-radius: 50%;"></div>
+            1 seat left!
+          </div>
+          <div style="font-size: 1.8rem; font-weight: 800; color: #10b981;"><span style="text-decoration:line-through; color:#94a3b8; font-size:1rem; margin-right:0.5rem;">£812</span>£199</div>
+        </div>
+      </a>
+
+      <!-- Deal 3 -->
+      <a href="https://www.skyscanner.net/transport/flights/man/ams" target="_blank" style="text-decoration: none; color: inherit; display: block; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--glass-border); border-radius: 12px; padding: 1.5rem; position: relative; overflow: hidden; transition: transform 0.2s; cursor: pointer;" onmouseover="this.style.transform='translateY(-5px)'; this.style.borderColor='rgba(255, 255, 255, 0.4)'" onmouseout="this.style.transform='translateY(0)'; this.style.borderColor='var(--glass-border)'">
+        <div style="position: absolute; top: 0; right: 0; background: #3b82f6; color: white; font-size: 0.7rem; font-weight: bold; padding: 0.25rem 0.75rem; border-bottom-left-radius: 8px;">DEPARTS IN 22H</div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+          <div style="font-size: 1.5rem; font-weight: 800;">MAN<span style="display:block; font-size:0.75rem; color: #94a3b8; font-weight: 500;">Manchester</span></div>
+          <div style="color: #00e5ff; font-size: 1.5rem;">✈</div>
+          <div style="font-size: 1.5rem; font-weight: 800; text-align: right;">AMS<span style="display:block; font-size:0.75rem; color: #94a3b8; font-weight: 500;">Amsterdam</span></div>
+        </div>
+        <div style="color: #94a3b8; font-size: 0.85rem; margin-bottom: 1rem;">✈️ KLM · KL1078</div>
+        <div style="display: flex; justify-content: space-between; align-items: flex-end; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 1rem;">
+          <div style="color: #3b82f6; font-weight: 600; font-size: 0.9rem; display: flex; align-items: center; gap: 0.4rem;">
+            <div style="width: 8px; height: 8px; background: #3b82f6; border-radius: 50%;"></div>
+            8 seats left
+          </div>
+          <div style="font-size: 1.8rem; font-weight: 800; color: #10b981;"><span style="text-decoration:line-through; color:#94a3b8; font-size:1rem; margin-right:0.5rem;">£150</span>£45</div>
+        </div>
+      </a>
+    </div>
+  </section>
+
+  <section class="features" id="radar">
+    <div class="feature-card">
+      <div class="feature-icon">🌍</div>
+      <h3>Unrestricted Radar</h3>
+      <p>Bypassing standard iframe limits, SkyPulse uses ADSB Exchange to give you absolute, unrestricted access to every flight overhead. No cookie walls. No hidden planes.</p>
+    </div>
+
+    <div class="feature-card" id="deals">
+      <div class="feature-icon">💸</div>
+      <h3>Deals Integrations</h3>
+      <p>Our algorithm detects commercial flights taking off within 48 hours with low passenger loads. We directly link you to the booking agencies to snag the distressed inventory.</p>
+      <div class="booking-links">
+        <a href="https://www.skyscanner.net/" target="_blank" class="book-btn">Skyscanner API</a>
+        <a href="https://www.kayak.com/" target="_blank" class="book-btn">Kayak API</a>
+      </div>
+    </div>
+
+    <div class="feature-card">
+      <div class="feature-icon">☁️</div>
+      <h3>Atmospheric Overlay</h3>
+      <p>Feature-flag driven weather overlays inject real-time METAR and cloud base data right onto your radar, so you can see exactly what the pilots see.</p>
+    </div>
+  </section>
+
+  <!-- Help / Support Chatbot -->
+  <div class="chatbot-btn" onclick="toggleChat()" title="Need Help?">💬</div>
+
+  <div class="chat-window" id="chatWindow">
+    <div class="chat-header">
+      <div class="status-dot"></div>
+      <div>
+        <div style="font-weight: 600; font-size: 0.95rem;">SkyPulse Support AI</div>
+        <div style="font-size: 0.75rem; color: var(--text-muted);">Usually replies instantly</div>
+      </div>
+    </div>
+    <div class="chat-body" id="chatBody">
+      <div class="msg bot">Hello! Welcome to SkyPulse ZaydAir. How can I help you track flights or find deals today?</div>
+    </div>
+    <div class="chat-input">
+      <input type="text" id="chatInput" placeholder="Type your message..." onkeypress="handleChat(event)">
+      <button class="btn-primary" style="padding: 0.5rem 1rem;" onclick="sendMessage()">Send</button>
+    </div>
+  </div>
+
+  <script>
+    function toggleChat() {
+      document.getElementById('chatWindow').classList.toggle('open');
+    }
+
+    function handleChat(e) {
+      if(e.key === 'Enter') sendMessage();
+    }
+
+    function sendMessage() {
+      const input = document.getElementById('chatInput');
+      const text = input.value.trim();
+      if(!text) return;
+
+      const body = document.getElementById('chatBody');
+      
+      const userMsg = document.createElement('div');
+      userMsg.className = 'msg user';
+      userMsg.innerText = text;
+      body.appendChild(userMsg);
+      input.value = '';
+
+      body.scrollTop = body.scrollHeight;
+
+      setTimeout(() => {
+        const botMsg = document.createElement('div');
+        botMsg.className = 'msg bot';
+        
+        let reply = "I'm sorry, I'm just an AI demo! You can check the dashboard to see live flights.";
+        const lower = text.toLowerCase();
+        
+        if(lower.includes("book") || lower.includes("deal")) {
+          reply = "Looking for deals? Check the Last Minute Deals section! You can click any deal card to book directly on Skyscanner.";
+        } else if(lower.includes("radar") || lower.includes("track")) {
+          reply = "You can click 'Launch Dashboard' to open the live ADSB Exchange radar and track flights.";
+        } else if(lower.includes("price")) {
+          reply = "Flight prices change dynamically based on seat scarcity. The dashboard indicates flights with <10 seats left!";
+        }
+
+        botMsg.innerText = reply;
+        body.appendChild(botMsg);
+        body.scrollTop = body.scrollHeight;
+      }, 800);
+    }
+  </script>
+</body>
+</html>

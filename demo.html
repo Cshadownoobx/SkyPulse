@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Feature Flag Bug Visualizer</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --surface: #1e293b;
+      --primary: #3b82f6;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --danger: #ef4444;
+      --success: #10b981;
+      --border: rgba(255, 255, 255, 0.1);
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, system-ui, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 2rem;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    h1, h2 {
+      text-align: center;
+      margin-bottom: 0.5rem;
+    }
+
+    p.subtitle {
+      color: var(--text-muted);
+      text-align: center;
+      max-width: 600px;
+      margin-bottom: 2rem;
+    }
+
+    .container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+      width: 100%;
+      max-width: 1200px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 1.5rem;
+      box-shadow: 0 10px 30px -10px rgba(0,0,0,0.5);
+    }
+
+    .chart-container {
+      display: flex;
+      align-items: flex-end;
+      height: 250px;
+      gap: 2px;
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border);
+    }
+
+    .bar {
+      flex: 1;
+      background: var(--primary);
+      border-radius: 2px 2px 0 0;
+      min-height: 1px;
+      transition: height 0.3s ease;
+      position: relative;
+    }
+
+    .bar:hover::after {
+      content: attr(title);
+      position: absolute;
+      top: -25px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #fff;
+      color: #000;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 10px;
+      white-space: nowrap;
+      z-index: 10;
+    }
+
+    .bar.fixed {
+      background: var(--success);
+    }
+
+    .stat {
+      font-size: 1.5rem;
+      font-weight: bold;
+      margin-top: 0.5rem;
+    }
+
+    .stat-label {
+      font-size: 0.875rem;
+      color: var(--text-muted);
+    }
+
+    .demo-section {
+      grid-column: 1 / -1;
+      margin-top: 2rem;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1rem;
+    }
+
+    th, td {
+      text-align: left;
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    th {
+      color: var(--text-muted);
+      font-weight: 500;
+      text-transform: uppercase;
+      font-size: 0.75rem;
+      letter-spacing: 0.05em;
+    }
+
+    .badge {
+      padding: 0.25rem 0.5rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .badge.enabled {
+      background: rgba(16, 185, 129, 0.2);
+      color: var(--success);
+    }
+
+    .badge.disabled {
+      background: rgba(239, 68, 68, 0.2);
+      color: var(--danger);
+    }
+
+    .input-group {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    input {
+      background: rgba(0,0,0,0.2);
+      border: 1px solid var(--border);
+      color: white;
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      flex: 1;
+      font-family: inherit;
+    }
+
+    button {
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 0.5rem 1.5rem;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    button:hover {
+      background: #2563eb;
+    }
+    
+    .error-highlight {
+      color: var(--danger);
+      font-family: monospace;
+      background: rgba(239, 68, 68, 0.1);
+      padding: 0.1rem 0.3rem;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Feature Flag Analyzer</h1>
+  <p class="subtitle">A visual demonstration of the <span class="error-highlight">hash * 16777619</span> precision bug in JavaScript causing uneven feature rollout distributions.</p>
+
+  <div class="container">
+    <!-- Buggy Hash Distribution -->
+    <div class="card">
+      <h2>Buggy Version (Current)</h2>
+      <p class="stat-label">Loss of lower bits creates heavy clustering</p>
+      <div class="stat"><span id="buggy-zero-buckets">0</span> Empty Buckets</div>
+      <div class="chart-container" id="chart-buggy"></div>
+    </div>
+
+    <!-- Fixed Hash Distribution -->
+    <div class="card">
+      <h2>Fixed Version (Math.imul)</h2>
+      <p class="stat-label">32-bit int multiplication keeps distribution even</p>
+      <div class="stat"><span id="fixed-zero-buckets">0</span> Empty Buckets</div>
+      <div class="chart-container" id="chart-fixed"></div>
+    </div>
+
+    <!-- Live Test Area -->
+    <div class="card demo-section">
+      <h2>Test a specific User ID</h2>
+      <div class="input-group">
+        <input type="text" id="userid-input" value="user_12345" placeholder="Enter a User ID (leave blank to test empty string bug)">
+        <button onclick="updateTable()">Check Flags</button>
+      </div>
+      
+      <table>
+        <thead>
+          <tr>
+            <th>Flag Name</th>
+            <th>Rollout %</th>
+            <th>Bucket (Buggy)</th>
+            <th>Bucket (Fixed)</th>
+            <th>Status (Buggy)</th>
+            <th>Status (Fixed)</th>
+          </tr>
+        </thead>
+        <tbody id="flag-table-body">
+          <!-- Rows injected via JS -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    // Flag Definitions from original file
+    const FLAGS = [
+      { id: "live_flight_map", name: "Live flight map", enabled: true, rolloutPercentage: 100, environments: ["prod", "staging", "dev"] },
+      { id: "flight_history", name: "Flight history tracker", enabled: true, rolloutPercentage: 40, environments: ["prod", "staging", "dev"] },
+      { id: "weather_overlay", name: "Weather overlay", enabled: true, rolloutPercentage: 60, environments: ["prod", "staging", "dev"] },
+      { id: "airline_comparison", name: "Airline on-time comparison", enabled: true, rolloutPercentage: 15, environments: ["prod", "staging", "dev"] },
+      { id: "price_tracker", name: "Price tracker", enabled: true, rolloutPercentage: 5, environments: ["prod", "staging", "dev"] }
+    ];
+
+    // Buggy Hash (Original)
+    function hashUserBuggy(userId, flagId) {
+      if (!userId) return Math.floor(Math.random() * 100); // Also demonstrating the falsy "" bug
+      const str = `${userId}:${flagId}`;
+      let hash = 2166136261;
+      for (let i = 0; i < str.length; i++) {
+        hash ^= str.charCodeAt(i);
+        hash = (hash * 16777619) >>> 0; // BUG: Precision loss on doubles > 9e15
+      }
+      return hash;
+    }
+
+    // Fixed Hash (Using Math.imul)
+    function hashUserFixed(userId, flagId) {
+      if (userId === undefined) return Math.floor(Math.random() * 100); // Fixed empty string check
+      const str = `${userId}:${flagId}`;
+      let hash = 2166136261;
+      for (let i = 0; i < str.length; i++) {
+        hash ^= str.charCodeAt(i);
+        hash = Math.imul(hash, 16777619) >>> 0; // FIX: Exact 32-bit int multiplication
+      }
+      return hash;
+    }
+
+    // Run simulation
+    function runSimulation() {
+      const BUCKETS_COUNT = 100;
+      const USERS = 10000;
+      const TEST_FLAG = "weather_overlay";
+
+      const buggyBuckets = new Array(BUCKETS_COUNT).fill(0);
+      const fixedBuckets = new Array(BUCKETS_COUNT).fill(0);
+
+      // Generate 10k random user IDs and hash them
+      for (let i = 0; i < USERS; i++) {
+        const userId = 'user_rand_' + Math.random().toString(36).substring(2, 9);
+        
+        buggyBuckets[hashUserBuggy(userId, TEST_FLAG) % 100]++;
+        fixedBuckets[hashUserFixed(userId, TEST_FLAG) % 100]++;
+      }
+
+      renderChart('chart-buggy', buggyBuckets, 'bar', 'buggy-zero-buckets');
+      renderChart('chart-fixed', fixedBuckets, 'bar fixed', 'fixed-zero-buckets');
+    }
+
+    // Render Histogram
+    function renderChart(containerId, buckets, className, zeroBucketsId) {
+      const container = document.getElementById(containerId);
+      container.innerHTML = '';
+      
+      const maxVal = Math.max(...buckets, 1);
+      let zeroes = 0;
+
+      buckets.forEach((count, i) => {
+        if (count === 0) zeroes++;
+        const bar = document.createElement('div');
+        bar.className = className;
+        bar.style.height = `${(count / maxVal) * 100}%`;
+        bar.title = `Bucket ${i}: ${count} users`;
+        container.appendChild(bar);
+      });
+
+      document.getElementById(zeroBucketsId).innerText = zeroes;
+      if (zeroes > 20) {
+        document.getElementById(zeroBucketsId).style.color = "var(--danger)";
+      } else {
+        document.getElementById(zeroBucketsId).style.color = "var(--success)";
+      }
+    }
+
+    // Table Test
+    function updateTable() {
+      const userId = document.getElementById('userid-input').value;
+      const tbody = document.getElementById('flag-table-body');
+      tbody.innerHTML = '';
+
+      FLAGS.forEach(flag => {
+        const bBuggy = hashUserBuggy(userId, flag.id) % 100;
+        const bFixed = hashUserFixed(userId, flag.id) % 100;
+
+        const isEnabledBuggy = flag.rolloutPercentage >= 100 || bBuggy < flag.rolloutPercentage;
+        const isEnabledFixed = flag.rolloutPercentage >= 100 || bFixed < flag.rolloutPercentage;
+
+        // Falsy bug demonstration
+        const bBuggyDisplay = userId === "" && flag.rolloutPercentage < 100 ? "Random" : bBuggy;
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><strong>${flag.name}</strong><br><small style="color:var(--text-muted)">${flag.id}</small></td>
+          <td>${flag.rolloutPercentage}%</td>
+          <td style="font-family: monospace;">${bBuggyDisplay}</td>
+          <td style="font-family: monospace;">${bFixed}</td>
+          <td><span class="badge ${isEnabledBuggy ? 'enabled' : 'disabled'}">${isEnabledBuggy ? 'ON' : 'OFF'}</span></td>
+          <td><span class="badge ${isEnabledFixed ? 'enabled' : 'disabled'}">${isEnabledFixed ? 'ON' : 'OFF'}</span></td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // Initialize
+    runSimulation();
+    updateTable();
+  </script>
+</body>
+</html>
